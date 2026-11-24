@@ -8,6 +8,10 @@ Current map: build 1.0.2.1, 299,257 extents covering 92,353,193 bytes of
 `.text`. That matches the 299,257 unwind records an independent import audit
 counted in the same file, so the count is a cross-check, not an assumption.
 
+Output is byte-identical between Linux x86-64 and Windows 11 x86-64 (sha256 of this
+file `b37954a4…`, checked 2026-11-24 with `revi` built from the same commit on
+nightly), so a regeneration can be verified by diffing.
+
 Regenerate only for a different build, and update `decomp/build.json` in the
 same change. Afterwards run `revi status decomp/map/functions.csv decomp` and
 commit `STATUS.md` too. Never hand-edit rows: claims are validated against this
