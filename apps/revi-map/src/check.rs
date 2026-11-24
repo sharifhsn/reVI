@@ -129,7 +129,7 @@ fn read_dir(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .map(|e| e.path())
-        .filter(|p| p.is_file())
+        .filter(|p| p.is_file() && !name(p).starts_with('.'))
         .collect();
     entries.sort();
     Ok(entries)
