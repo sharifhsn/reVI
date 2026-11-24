@@ -93,4 +93,3 @@ fn write_records(out: &Path, records: &[Record], jsonl: bool) -> Result<()> {
     writer.flush()?;
     Ok(())
 }
-

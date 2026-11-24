@@ -45,10 +45,7 @@ enum Cli {
         owner: String,
     },
     /// Regenerate decomp/STATUS.md.
-    Status {
-        map: PathBuf,
-        decomp: PathBuf,
-    },
+    Status { map: PathBuf, decomp: PathBuf },
 }
 
 fn main() -> Result<()> {

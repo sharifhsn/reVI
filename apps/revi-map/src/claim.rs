@@ -23,7 +23,10 @@ struct Claim {
 pub fn claim(map: &Path, decomp: &Path, rva: u32, size: Option<u32>, owner: &str) -> Result<()> {
     let extents = read_map(map)?;
     let Some(&mapped) = extents.get(&rva) else {
-        bail!("{rva:#08x} is not in {} (run `revi map` again?)", map.display());
+        bail!(
+            "{rva:#08x} is not in {} (run `revi map` again?)",
+            map.display()
+        );
     };
     let size = size.unwrap_or(mapped);
     if size == 0 || size > mapped {

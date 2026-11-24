@@ -34,8 +34,8 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
         };
         let text = std::fs::read_to_string(&entry)
             .with_context(|| format!("reading {}", entry.display()))?;
-        let claim: Claim = serde_json::from_str(&text)
-            .with_context(|| format!("parsing {}", entry.display()))?;
+        let claim: Claim =
+            serde_json::from_str(&text).with_context(|| format!("parsing {}", entry.display()))?;
         if claim.rva != rva {
             problems.push(format!(
                 "claims/{}: rva says {:#x}",
@@ -70,15 +70,15 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
     for (dir, suffix) in [("src", "c"), ("notes", "md"), ("tests", "json")] {
         for entry in read_dir(&decomp.join(dir))? {
             let Some(rva) = rva_from_file(&entry) else {
-                problems.push(format!("{dir}/{}: name is not 0x<rva>.{suffix}", name(&entry)));
+                problems.push(format!(
+                    "{dir}/{}: name is not 0x<rva>.{suffix}",
+                    name(&entry)
+                ));
                 continue;
             };
             let expected = format!("0x{rva:08x}.{suffix}");
             if name(&entry) != expected {
-                problems.push(format!(
-                    "{dir}/{}: rename to {expected}",
-                    name(&entry)
-                ));
+                problems.push(format!("{dir}/{}: rename to {expected}", name(&entry)));
             }
             if !claims.contains_key(&rva) {
                 problems.push(format!("{dir}/{}: no claim", name(&entry)));
@@ -136,7 +136,10 @@ fn read_dir(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
 }
 
 fn name(path: &Path) -> String {
-    path.file_name().unwrap_or_default().to_string_lossy().into_owned()
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// `0x056a1ec8.json` → `0x056a1ec8`.
@@ -165,7 +168,10 @@ mod tests {
 
     #[test]
     fn parses_canonical_names() {
-        assert_eq!(rva_from_file(Path::new("0x056a1ec8.json")), Some(0x056a_1ec8));
+        assert_eq!(
+            rva_from_file(Path::new("0x056a1ec8.json")),
+            Some(0x056a_1ec8)
+        );
         assert_eq!(rva_from_file(Path::new("0x10.c")), Some(0x10));
         assert_eq!(rva_from_file(Path::new("junk.json")), None);
         assert_eq!(rva_from_file(Path::new("0x.json")), None);

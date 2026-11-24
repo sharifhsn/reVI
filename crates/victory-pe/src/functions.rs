@@ -45,10 +45,16 @@ pub struct UnwindFunction {
 }
 
 impl UnwindFunction {
-    /// Extent in bytes.
+    /// Extent in bytes. Never zero: an empty extent is rejected on read.
     #[must_use]
     pub const fn len(self) -> u32 {
         self.end_rva.saturating_sub(self.begin_rva)
+    }
+
+    /// Extents are never empty, so this is only for `len_without_is_empty`.
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -66,7 +72,7 @@ pub fn unwind_functions(data: &[u8], info: &ImageInfo) -> Result<Vec<UnwindFunct
         return Ok(Vec::new());
     }
     let directory_size = directory_size as usize;
-    if directory_size % RUNTIME_FUNCTION_SIZE != 0 {
+    if !directory_size.is_multiple_of(RUNTIME_FUNCTION_SIZE) {
         return Err(PeError::Malformed(format!(
             "exception directory size {directory_size} is not a multiple of {RUNTIME_FUNCTION_SIZE}"
         )));
@@ -115,7 +121,7 @@ fn rva_to_offset(info: &ImageInfo, rva: u32, len: usize) -> Option<usize> {
     for section in &info.sections {
         let offset = rva.checked_sub(section.rva)?;
         if offset.checked_add(len)? <= section.file_size {
-            return Some(usize::try_from(section.file_offset.checked_add(offset)?).ok()?);
+            return usize::try_from(section.file_offset.checked_add(offset)?).ok();
         }
     }
     None
@@ -134,9 +140,11 @@ mod tests {
         const PDATA_OFFSET: usize = 0x400;
         let mut data = vec![0u8; PDATA_OFFSET + FILE_ALIGN];
         // DOS header, then an optional header with 16 data directories.
-        data[layout::DOS_E_LFANEW..layout::DOS_E_LFANEW + 4].copy_from_slice(&0x80u32.to_le_bytes());
+        data[layout::DOS_E_LFANEW..layout::DOS_E_LFANEW + 4]
+            .copy_from_slice(&0x80u32.to_le_bytes());
         let opt = layout::optional_header_offset(&data).unwrap();
-        data[opt + layout::OPT_NUMBER_OF_RVA_AND_SIZES..opt + layout::OPT_NUMBER_OF_RVA_AND_SIZES + 4]
+        data[opt + layout::OPT_NUMBER_OF_RVA_AND_SIZES
+            ..opt + layout::OPT_NUMBER_OF_RVA_AND_SIZES + 4]
             .copy_from_slice(&16u32.to_le_bytes());
         // Optional header data directory 3: exception table.
         let at = layout::data_directory_offset(&data, layout::dir::EXCEPTION).unwrap();
@@ -196,7 +204,10 @@ mod tests {
 
     #[test]
     fn reads_extents_in_order() {
-        let (data, info) = image_with_pdata(&records_bytes(&[record(0x1100, 0x1140), record(0x1140, 0x11c0)]));
+        let (data, info) = image_with_pdata(&records_bytes(&[
+            record(0x1100, 0x1140),
+            record(0x1140, 0x11c0),
+        ]));
         let functions = unwind_functions(&data, &info).unwrap();
         assert_eq!(functions.len(), 2);
         assert_eq!(functions[1].len(), 0x80);
@@ -204,7 +215,10 @@ mod tests {
 
     #[test]
     fn accepts_adjacent_and_rejects_overlap() {
-        let (data, info) = image_with_pdata(&records_bytes(&[record(0x1100, 0x1140), record(0x1130, 0x1140)]));
+        let (data, info) = image_with_pdata(&records_bytes(&[
+            record(0x1100, 0x1140),
+            record(0x1130, 0x1140),
+        ]));
         let error = unwind_functions(&data, &info).unwrap_err().to_string();
         assert!(error.contains("overlapping"), "{error}");
     }
