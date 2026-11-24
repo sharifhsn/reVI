@@ -60,6 +60,9 @@ enum Cli {
         /// How many rows the queue keeps.
         #[arg(long, default_value_t = 200)]
         top: usize,
+        /// Directory with `nodes.csv`, to rank by in-degree.
+        #[arg(long)]
+        graph: Option<PathBuf>,
     },
     /// Compile one body and diff it against the original extent.
     Diff {
@@ -118,7 +121,8 @@ fn main() -> Result<()> {
             out,
             queue,
             top,
-        } => victory_map::scan::run(&file, &out, queue.as_deref(), top),
+            graph,
+        } => victory_map::scan::run(&file, &out, queue.as_deref(), top, graph.as_deref()),
         Cli::Diff {
             exe,
             map,

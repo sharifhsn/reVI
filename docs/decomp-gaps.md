@@ -32,11 +32,10 @@ classifier is deliberately conservative; a `data` verdict can still hide code.
 
 ## Use
 
-`decomp/map/gaps.csv` (`rva,size,class,first`). A `code` gap can be claimed like
-a function, with `--chunks 0`? No: gaps are not map rows, so claim them by RVA
-with their own size and reference the gap in the note. Merging them into
-`functions.csv` is a separate decision and would make the map no longer a pure
-`.pdata` reading.
+`decomp/map/gaps.csv` (`rva,size,class,first`). A `code` gap is not a map row,
+so claim it by RVA with its own size and name the gap in the note. Folding gaps
+into `functions.csv` is a separate decision; it would stop the map from being a
+pure `.pdata` reading.
 
 ## What the sweep does not do
 

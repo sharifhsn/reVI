@@ -51,7 +51,14 @@ pub struct Row {
     pub alias_of: Option<u32>,
 }
 
-pub fn run(file: &Path, out: &Path, queue: Option<&Path>, top: usize) -> Result<()> {
+pub fn run(
+    file: &Path,
+    out: &Path,
+    queue: Option<&Path>,
+    top: usize,
+    graph: Option<&Path>,
+) -> Result<()> {
+    let hot = graph.map(read_indegree).transpose()?.unwrap_or_default();
     let data = std::fs::read(file).with_context(|| format!("reading {}", file.display()))?;
     let info = ImageInfo::parse(&data).with_context(|| format!("parsing {}", file.display()))?;
     let functions = unwind_functions(&data, &info)
@@ -71,6 +78,15 @@ pub fn run(file: &Path, out: &Path, queue: Option<&Path>, top: usize) -> Result<
             continue;
         };
         let (class, mut signals, mut score) = classify(bytes, f.begin_rva, &info, &iat);
+        if let Some(&n) = hot.get(&f.begin_rva) {
+            if n >= 20 {
+                signals.push("hot");
+                score += 25;
+            } else {
+                signals.push("called");
+                score += 10;
+            }
+        }
         if f.chunks > 1 {
             signals.push("split");
             score -= 5 * (f.chunks as i32 - 1).min(6);
@@ -245,6 +261,25 @@ fn digest(b: &[u8]) -> u64 {
         hash = hash.wrapping_mul(0x100_0000_01b3);
     }
     hash ^ (b.len() as u64)
+}
+
+/// In-degree per function from a `nodes.csv`.
+fn read_indegree(dir: &Path) -> Result<HashMap<u32, u32>> {
+    let text = std::fs::read_to_string(dir.join("nodes.csv"))
+        .with_context(|| format!("reading {}", dir.join("nodes.csv").display()))?;
+    let mut map = HashMap::new();
+    for line in text.lines().skip(1) {
+        let mut fields = line.split(',');
+        let (Some(rva), Some(degree)) = (fields.next(), fields.next()) else {
+            continue;
+        };
+        if let (Ok(rva), Ok(degree)) = (rva.parse(), degree.parse::<u32>())
+            && degree > 0
+        {
+            map.insert(rva, degree);
+        }
+    }
+    Ok(map)
 }
 
 fn count(rows: &[Row]) -> Vec<(&'static str, usize)> {

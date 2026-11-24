@@ -8,6 +8,12 @@ Baseline throughput measured today: **10 bodies in about two focused hours**,
 all ≤32 bytes, 2 of them instruction-identical. Small bodies will not stay this
 cheap, but nothing below assumes better than 5 bodies/hour.
 
+**State 2026-11-24: steps 1–5 are done.** The toolset question is answered
+(`docs/decomp-toolset-pin.md`), the gap sweep and call graph are built
+(`docs/decomp-gaps.md`, `decomp/map/graph/`), strings are catalogued, and
+`revi diff` is the loop. Next is 6, the oracle harness, which needs the
+package.
+
 The plan is ordered so that each step removes a blocker for the next. Steps 1–7
 are worth doing even if the effort stops after them, because each produces
 something the field can use.
@@ -16,11 +22,11 @@ something the field can use.
 
 | # | Work | Why it is here | Feasibility | Agent-h | Wall |
 |---|---|---|---|---|---|
-| 1 | **Resolve the toolset** — try 19.3x/19.4x minors on the ten bodies already done, record which reproduces the encoding | Two functions differ only in `89 D0` vs `8B C2` and a spill slot; that is compiler, not source. Wrong pin poisons every later comparison | High. `msvc-wine` takes any installer manifest; the checker already diffs | 3–5 | 1 day |
-| 2 | **Sweep the 7.5 MB with no `.pdata` record** — linear disassembly from known code, classify jump-target vs junk vs data-in-code | 7.5 MB is 7.5% of the section and invisible to the map. Some is leaf code reachable only by jump table | Medium. Needs a disassembler pass and a rule for "looks like data" (`iced-x86` + heuristics) | 8–12 | 2 days |
-| 3 | **Call graph** — direct `E8` targets, import call sites, pointer-table edges, per-function in/out degree | Without callers, roles are guesses; with them, names and types follow. Also finds the true entry roots for 2 | High, mechanical. Risk is size, not difficulty: 299k nodes | 10–14 | 3 days |
-| 4 | **Decode `.rdata` (H 7.95)** — identify the encoding over the known string pool | If it is compressed or keyed, the literal inventory is a fraction of the truth and naming stalls | Medium. Needs the scheme recognised; possibly RAGE's own packing | 6–10 | unknown tail |
-| 5 | **`revi diff`** — compile a body, normalise, print a relocation-aware instruction diff with a score | The loop today is `objdump` by hand. This is the daily tool | High. `objdiff` already implements the diff core; ours is a CLI wrapper | 6–8 | 1–2 days |
+| ✓1 | **Resolve the toolset** — try 19.3x/19.4x minors on the ten bodies already done, record which reproduces the encoding | Two functions differ only in `89 D0` vs `8B C2` and a spill slot; that is compiler, not source. Wrong pin poisons every later comparison | High. `msvc-wine` takes any installer manifest; the checker already diffs | 3–5 | 1 day |
+| ✓2 | **Sweep the 7.5 MB with no `.pdata` record** — linear disassembly from known code, classify jump-target vs junk vs data-in-code | 7.5 MB is 7.5% of the section and invisible to the map. Some is leaf code reachable only by jump table | Medium. Needs a disassembler pass and a rule for "looks like data" (`iced-x86` + heuristics) | 8–12 | 2 days |
+| ✓3 | **Call graph** — direct `E8` targets, import call sites, pointer-table edges, per-function in/out degree | Without callers, roles are guesses; with them, names and types follow. Also finds the true entry roots for 2 | High, mechanical. Risk is size, not difficulty: 299k nodes | 10–14 | 3 days |
+| ✓4 | **Decode `.rdata` (H 7.95)** — identify the encoding over the known string pool | If it is compressed or keyed, the literal inventory is a fraction of the truth and naming stalls | Medium. Needs the scheme recognised; possibly RAGE's own packing | 6–10 | unknown tail |
+| ✓5 | **`revi diff`** — compile a body, normalise, print a relocation-aware instruction diff with a score | The loop today is `objdump` by hand. This is the daily tool | High. `objdiff` already implements the diff core; ours is a CLI wrapper | 6–8 | 1–2 days |
 | 6 | **Oracle harness v1** — trap at RVA, dump args/regs, single-step out, hash writes, replay | Nothing can be `matching` without it. It is also how the 50 leaves get proven | Medium-high. VIctory has a loader and diagnostics switches; this is loader surgery | 20–30 | 4–6 days, needs the package |
 | 7 | **Fifty leaves end to end** — claim, read, port, diff, three runs each | Proves the whole loop at a size where mistakes are cheap | High once 1–6 exist | 15–20 | 3–4 days |
 | 8 | **Type and frame reconstruction** — per function: stack frame, struct offsets, vtable slots, argument widths | This is where decompiled C becomes C++ that compiles into the same bytes. RTTI is stripped, so it is all derived | Medium. Slow, needs judgement; the call graph makes it tractable | 3–6 h per *class* of pattern, then per site | ongoing |
@@ -57,8 +63,10 @@ dependency on 11. 14 has no dependency on anything and can start any time.
 
 ## What each gate means
 
-* after 1: comparisons are trustworthy
-* after 3: roles are inferable, so names and types are not guesses
+* after 1: comparisons are trustworthy — **reached, with a null result: the
+  minor is not the variable, so byte-identity stays a score**
+* after 3: roles are inferable — **reached: 825,041 edges, 82,223 reachable,
+  queue now ranks by in-degree**
 * after 5: the daily loop is one command
 * after 7: `matching` is a claim we can defend
 * after 9: split bodies are cheap
