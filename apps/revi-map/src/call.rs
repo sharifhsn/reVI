@@ -99,6 +99,27 @@ pub fn run(
     }
 
     // Optional fake TEB for bodies that read gs:0x58 (thread index etc.).
+    // Optional import stubs: every IAT slot points at `xor eax,eax; ret` so an
+    // import-bound body can run and be observed. Not the real function.
+    if std::env::var("REVI_STUBS").is_ok() {
+        let stub = unsafe { libc_mmap(std::ptr::null_mut(), 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
+        if stub as isize == -1 {
+            bail!("stub mmap failed");
+        }
+        unsafe {
+            stub.write(0x31);        // xor eax,eax
+            stub.add(1).write(0xC0);
+            stub.add(2).write(0xC3); // ret
+            libc_mprotect(stub, 4096, PROT_READ | PROT_EXEC);
+        }
+        for module in &info.imports {
+            for entry in &module.entries {
+                let at = unsafe { mapped.add(entry.iat_slot_rva as usize) };
+                unsafe { at.cast::<u64>().write_unaligned(stub as u64) };
+            }
+        }
+    }
+
     if std::env::var("REVI_GS").is_ok() {
         let teb = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
         let block = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };

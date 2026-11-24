@@ -1,1 +1,15 @@
-{"rva":90179368,"note":"import-bound: no run possible without IAT stubs","cases":[],"exe_runs":0,"game_runs":0}
+{
+  "rva": 90179368,
+  "note": "reaches TerminateProcess with rdx=0xC0000409 under REVI_STUBS",
+  "cases": [
+    {
+      "args": [
+        "buf",
+        "0"
+      ],
+      "returns": "stubbed imports; see note"
+    }
+  ],
+  "exe_runs": 1,
+  "game_runs": 0
+}
