@@ -1,0 +1,11 @@
+{
+  "rva": 227920,
+  "note": "needs TEB: run with REVI_GS=1; success path tail-calls g_slots[slot]",
+  "cases": [
+    {"args": ["word=2", "1", "1"], "returns": "no change (generation 1 < stamp 2)", "exe_run": true},
+    {"args": ["word=0x02000000", "0", "0"], "returns": "no change (bit 25 set)", "exe_run": true},
+    {"args": ["word=0", "0", "0"], "returns": "CAS reserve, then fault at the null handler", "exe_run": true}
+  ],
+  "exe_runs": 3,
+  "game_runs": 0
+}

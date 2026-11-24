@@ -98,6 +98,26 @@ pub fn run(
         buf_ptr = mem as u64;
     }
 
+    // Optional fake TEB for bodies that read gs:0x58 (thread index etc.).
+    if std::env::var("REVI_GS").is_ok() {
+        let teb = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
+        let block = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
+        let obj = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
+        if teb as isize == -1 || block as isize == -1 || obj as isize == -1 {
+            bail!("teb mmap failed");
+        }
+        unsafe {
+            *teb.add(0x58).cast::<*mut u8>() = block; // gs:0x58, the first TLS slot
+            *block.cast::<*mut u8>() = obj; // slot -> object pointer
+            *obj.add(0x1294) = 0;           // thread slot index
+        }
+        let rc = unsafe { libc_arch_prctl(0x1001, teb as u64) }; // ARCH_SET_GS
+
+        if rc != 0 {
+            bail!("arch_prctl(ARCH_SET_GS) failed");
+        }
+    }
+
     let stack_size = 1 << 20;
     let stack = unsafe {
         libc_mmap(
@@ -243,4 +263,6 @@ unsafe extern "C" {
     fn libc_mmap(addr: *mut u8, len: usize, prot: i32, flags: i32, fd: i32, off: i64) -> *mut u8;
     #[link_name = "mprotect"]
     fn libc_mprotect(addr: *mut u8, len: usize, prot: i32) -> i32;
+    #[link_name = "arch_prctl"]
+    fn libc_arch_prctl(code: i32, addr: u64) -> i32;
 }

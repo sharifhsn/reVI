@@ -115,6 +115,9 @@ enum Cli {
         /// Write a float64 into the argument buffer, `offset:value` (offset hex).
         #[arg(long = "f64")]
         floats: Vec<String>,
+        /// Write a u32 into the argument buffer, `offset:value` (both hex).
+        #[arg(long = "u32")]
+        words: Vec<String>,
     },
     /// Regenerate decomp/STATUS.md.
     Status { map: PathBuf, decomp: PathBuf },
@@ -170,12 +173,13 @@ fn main() -> Result<()> {
             dump,
             arg_buf,
             floats,
+            words,
         } => {
             let rva = u32::from_str_radix(rva.trim_start_matches("0x"), 16)
                 .with_context(|| format!("bad rva {rva:?}"))?;
             let buf = arg_buf.map(|len| {
                 let len = len as usize;
-                let writes = floats
+                let mut writes = floats
                     .iter()
                     .map(|f| {
                         let (o, v) = f.split_once(':').context("--f64 wants offset:value")?;
@@ -185,6 +189,13 @@ fn main() -> Result<()> {
                         ))
                     })
                     .collect::<Result<Vec<_>>>()?;
+                for w in &words {
+                    let (o, v) = w.split_once(':').context("--u32 wants offset:value")?;
+                    writes.push((
+                        u32::from_str_radix(o.trim_start_matches("0x"), 16)? as usize,
+                        f64::from_bits(u64::from_str_radix(v.trim_start_matches("0x"), 16)?),
+                    ));
+                }
                 Ok::<_, anyhow::Error>((len, writes))
             }).transpose()?;
             let dump = dump.as_deref().map(|d| {
