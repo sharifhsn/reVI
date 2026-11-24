@@ -126,7 +126,7 @@ pub fn status(map: &Path, decomp: &Path) -> Result<()> {
     let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
     if let Ok(text) = std::fs::read_to_string(decomp.join("map/candidates.csv")) {
         for line in text.lines().skip(1) {
-            if let Some(class) = line.split(',').nth(2) {
+            if let Some(class) = line.split(',').nth(3) {
                 *counts.entry(class.to_owned()).or_default() += 1;
             }
         }
