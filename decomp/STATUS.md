@@ -2,10 +2,10 @@
 # Status
 
 Functions mapped: **299257**  
-Claimed: **16** (0.001% of mapped bytes)  
+Claimed: **17** (0.001% of mapped bytes)  
 Matching: **0**
 
-* claimed: 1
+* claimed: 2
 * ported: 15
 
 Classes: alias 25329, giant 84, thunk 2, unique 266040
