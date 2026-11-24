@@ -60,6 +60,13 @@ A mismatch is not a failure. Record the byte counts and the shape of the
 difference in the note, as `notes/0x001117e0.md` does. Only an oracle run
 promotes a claim to `matching`.
 
+## Import calls
+
+An unlinked object emits `call rel32`; the linked original emits
+`call QWORD PTR [rip+iat]`. `revi diff` normalises `call [rip]` and a plain
+`call` to the same token, so an import call does not read as a mismatch. It
+does mean `revi call` cannot run such a body: the IAT is null.
+
 ## Known gaps
 
 * `/GS` differs per function: the scans show stack cookies in some bodies.

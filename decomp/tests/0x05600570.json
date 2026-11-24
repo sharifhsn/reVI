@@ -1,0 +1,7 @@
+{
+  "rva": 90203504,
+  "note": "no run yet: first instruction calls through the IAT, which is null in an unmapped image",
+  "cases": [],
+  "exe_runs": 0,
+  "game_runs": 0
+}
