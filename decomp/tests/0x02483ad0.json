@@ -1,0 +1,1 @@
+{"rva":38203344,"note":"closes g_slots[0..4] under stubs","cases":[{"args":[],"returns":"five stubbed CloseHandle calls"}],"exe_runs":1,"game_runs":0}
