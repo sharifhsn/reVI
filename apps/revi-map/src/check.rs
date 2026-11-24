@@ -9,6 +9,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
+use victory_map::read_map;
+
 /// What a claim file may say.
 const STATUSES: [&str; 4] = ["claimed", "ported", "matching", "stale"];
 
@@ -131,27 +133,6 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
         bail!("{} problems", problems.len());
     }
     Ok(())
-}
-
-pub(crate) fn read_map(map: &Path) -> Result<BTreeMap<u32, u32>> {
-    let text =
-        std::fs::read_to_string(map).with_context(|| format!("reading {}", map.display()))?;
-    let mut extents = BTreeMap::new();
-    for (index, line) in text.lines().enumerate() {
-        if index == 0 {
-            continue;
-        }
-        let mut fields = line.split(',');
-        let (Some(rva), Some(size)) = (fields.next(), fields.next()) else {
-            bail!("{}:{}: expected rva,size", map.display(), index + 1);
-        };
-        let rva: u32 = rva.parse().context("rva")?;
-        let size: u32 = size.parse().context("size")?;
-        if extents.insert(rva, size).is_some() {
-            bail!("{}:{}: duplicate rva {rva:#x}", map.display(), index + 1);
-        }
-    }
-    Ok(extents)
 }
 
 fn read_dir(dir: &Path) -> Result<Vec<std::path::PathBuf>> {

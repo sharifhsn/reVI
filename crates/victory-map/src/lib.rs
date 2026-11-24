@@ -5,10 +5,11 @@
 
 pub mod scan;
 
+use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use victory_pe::ImageInfo;
 use victory_pe::functions::unwind_functions;
 
@@ -94,4 +95,38 @@ fn write_records(out: &Path, records: &[Record], jsonl: bool) -> Result<()> {
     }
     writer.flush()?;
     Ok(())
+}
+
+pub fn read_map(map: &Path) -> Result<BTreeMap<u32, u32>> {
+    let text =
+        std::fs::read_to_string(map).with_context(|| format!("reading {}", map.display()))?;
+    let mut extents = BTreeMap::new();
+    for (index, line) in text.lines().enumerate() {
+        if index == 0 {
+            continue;
+        }
+        let mut fields = line.split(',');
+        let (Some(rva), Some(size)) = (fields.next(), fields.next()) else {
+            bail!("{}:{}: expected rva,size", map.display(), index + 1);
+        };
+        let rva: u32 = rva.parse().context("rva")?;
+        let size: u32 = size.parse().context("size")?;
+        if extents.insert(rva, size).is_some() {
+            bail!("{}:{}: duplicate rva {rva:#x}", map.display(), index + 1);
+        }
+    }
+    Ok(extents)
+}
+
+
+/// Bytes of an extent, if they are backed by file data.
+#[must_use]
+pub fn extent<'a>(
+    data: &'a [u8],
+    info: &victory_pe::ImageInfo,
+    rva: u32,
+    len: u32,
+) -> Option<&'a [u8]> {
+    let offset = info.rva_to_file_offset(rva)? as usize;
+    data.get(offset..offset + len as usize)
 }

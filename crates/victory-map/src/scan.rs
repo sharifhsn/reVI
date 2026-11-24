@@ -11,6 +11,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use victory_pe::ImageInfo;
+
+use crate::extent;
 use victory_pe::functions::unwind_functions;
 
 /// `IMAGE_SCN_MEM_EXECUTE`, re-stated because the scan is section-agnostic.
@@ -243,11 +245,6 @@ fn digest(b: &[u8]) -> u64 {
         hash = hash.wrapping_mul(0x100_0000_01b3);
     }
     hash ^ (b.len() as u64)
-}
-
-fn extent<'a>(data: &'a [u8], info: &ImageInfo, rva: u32, len: u32) -> Option<&'a [u8]> {
-    let offset = info.rva_to_file_offset(rva)? as usize;
-    data.get(offset..offset + len as usize)
 }
 
 fn count(rows: &[Row]) -> Vec<(&'static str, usize)> {

@@ -32,6 +32,22 @@ objdump -d 0x<rva>.obj
 `cl` is a Wine wrapper; `msvcenv-native.sh` sets `INCLUDE`/`LIB` so the same
 environment also drives `clang-cl` and `lld-link` if a native path is needed.
 
+## `revi diff`
+
+```sh
+REVI_CC=~/srv/revi/bin/cc REVI_CFLAGS=/arch:AVX2 \
+  revi diff <exe> decomp/map/functions.csv 0x<rva> decomp/src/0x<rva>.c
+```
+
+Compiles, normalises both sides (every hex displacement becomes `----`; they
+are link-time in the original and zero in the object) and prints a
+side-by-side. The score is the longest common subsequence of instruction text
+over the longer side, so an insertion does not zero out the rest. 100% exits 0.
+
+`REVI_CC` is the compiler wrapper (Wine + `msvcenv-native.sh`), `REVI_CFLAGS`
+the per-call extras. The baseline flags cannot be changed per call: they are
+the comparison contract.
+
 ## Comparing
 
 Byte comparison is per function: dump the extent from the user's exe with

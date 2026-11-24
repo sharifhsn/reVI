@@ -8,6 +8,7 @@ use clap::Parser;
 
 mod check;
 mod claim;
+mod diff;
 
 #[derive(Parser)]
 #[command(name = "revi", version, about = "GTA VI decompilation tools")]
@@ -60,6 +61,20 @@ enum Cli {
         #[arg(long, default_value_t = 200)]
         top: usize,
     },
+    /// Compile one body and diff it against the original extent.
+    Diff {
+        /// The executable.
+        exe: PathBuf,
+        /// The committed map, to look the extent up.
+        map: PathBuf,
+        /// Function RVA in hex.
+        rva: String,
+        /// Source file to compile.
+        source: PathBuf,
+        /// Also write the report here.
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
     /// Regenerate decomp/STATUS.md.
     Status { map: PathBuf, decomp: PathBuf },
 }
@@ -86,6 +101,17 @@ fn main() -> Result<()> {
             queue,
             top,
         } => victory_map::scan::run(&file, &out, queue.as_deref(), top),
+        Cli::Diff {
+            exe,
+            map,
+            rva,
+            source,
+            out,
+        } => {
+            let rva = u32::from_str_radix(rva.trim_start_matches("0x"), 16)
+                .with_context(|| format!("bad rva {rva:?}"))?;
+            diff::run(&exe, &map, rva, &source, out.as_deref())
+        }
         Cli::Status { map, decomp } => claim::status(&map, &decomp),
     }
 }

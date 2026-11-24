@@ -8,7 +8,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
-use crate::check::{claimed_rvas, read_map};
+use crate::check::claimed_rvas;
+use victory_map::read_map;
 
 #[derive(serde::Serialize)]
 struct Claim {
