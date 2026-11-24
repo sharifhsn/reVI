@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+import shutil
 import tempfile
 import time
 import urllib.error
@@ -23,7 +24,7 @@ import urllib.request
 URL = os.environ.get("REVI_URL", "http://127.0.0.1:3000").rstrip("/")
 REPO = os.environ.get("REVI_REPO", "sharif/reVI")
 TOKEN = os.environ.get("REVI_TOKEN", "")
-WORK = os.environ.get("REVI_WORK", "/srv/git/reVI.git")
+WORK = os.environ.get("REVI_WORK", "/home/sharif/srv/revi/bot-work")
 REVI = os.environ.get("REVI_BIN", "/srv/revi/revi")
 LABEL = "automerger"
 HUMAN = "needs-human"
@@ -93,35 +94,32 @@ def check_pull(pull):
     if reasons:
         return reasons
 
-    with tempfile.TemporaryDirectory(prefix="revi-pr-") as temp:
-        fetch = subprocess.run(
-            ["git", "--git-dir", WORK, "fetch", "-q", "origin", f"refs/pull/{number}/head"],
+    fetch = subprocess.run(
+        ["git", "-C", WORK, "fetch", "-q", "origin", f"refs/pull/{number}/head"],
+        capture_output=True,
+        text=True,
+    )
+    if fetch.returncode:
+        return [f"fetch failed: {fetch.stderr.strip()[:200]}"]
+    sha = subprocess.run(
+        ["git", "-C", WORK, "rev-parse", "FETCH_HEAD"], capture_output=True, text=True
+    ).stdout.strip()
+    temp = tempfile.mkdtemp(prefix="revi-pr-")
+    try:
+        add = subprocess.run(
+            ["git", "-C", WORK, "worktree", "add", "-q", "--detach", temp, sha],
             capture_output=True,
             text=True,
         )
-        if fetch.returncode:
-            return [f"fetch failed: {fetch.stderr.strip()[:200]}"]
-        clone = subprocess.run(
-            ["git", "clone", "-q", "--depth", "1", "--no-checkout", WORK, temp + "/c"],
-            capture_output=True,
-            text=True,
-        )
-        if clone.returncode:
-            return [f"clone failed: {clone.stderr.strip()[:200]}"]
-        head = subprocess.run(
-            ["git", "-C", temp + "/c", "checkout", "-q", "FETCH_HEAD"],
-            capture_output=True,
-            text=True,
-        )
-        if head.returncode:
-            return ["checkout failed"]
+        if add.returncode:
+            return [f"worktree failed: {add.stderr.strip()[:200]}"]
         for name, _ in files:
-            path = os.path.join(temp, "c", name)
+            path = os.path.join(temp, name)
             if os.path.exists(path) and os.path.getsize(path) > MAX_BYTES:
                 reasons.append(f"`{name}` is over {MAX_BYTES} bytes")
         result = subprocess.run(
             [REVI, "check", "decomp/map/functions.csv", "decomp"],
-            cwd=temp + "/c",
+            cwd=temp,
             capture_output=True,
             text=True,
         )
@@ -129,6 +127,12 @@ def check_pull(pull):
             tail = (result.stdout + result.stderr).strip().splitlines()
             problems = [line.strip() for line in tail if line.strip().startswith("0")]
             reasons += problems[:12] or ["`revi check` failed"]
+    finally:
+        subprocess.run(
+            ["git", "-C", WORK, "worktree", "remove", "--force", temp],
+            capture_output=True,
+        )
+        shutil.rmtree(temp, ignore_errors=True)
     return reasons
 
 

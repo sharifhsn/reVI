@@ -1,3 +1,18 @@
+# reVI
+
+A fork of [VIctory](https://github.com/Marvisak/VIctory) for a source-level
+decompilation of GTA VI (Xbox Series X|S, build 1.0.2.1). The runtime is
+upstream's and keeps flowing in through the `upstream` remote; this fork adds
+`decomp/`: a function map from the image headers, one file per function, and
+the tooling that merges them without a review queue.
+
+Canonical remote (self-hosted, survives a GitHub takedown):
+<http://100.123.50.43:3300/sharif/reVI>. Mirror: this GitHub repo. Read
+[docs/decomp.md](docs/decomp.md) before contributing decomp work, then
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
 # VIctory
 
 Runs Grand Theft Auto VI (Xbox Series X|S) natively on Windows, from files
