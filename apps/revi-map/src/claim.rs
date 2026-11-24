@@ -75,7 +75,11 @@ pub fn status(map: &Path, decomp: &Path) -> Result<()> {
     let claimed = claimed_rvas(decomp);
     let mut by_status: std::collections::BTreeMap<String, usize> = Default::default();
     for path in std::fs::read_dir(decomp.join("claims"))?.flatten() {
-        let Ok(text) = std::fs::read_to_string(path.path()) else {
+        let path = path.path();
+        if path.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')) {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
         let value: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
