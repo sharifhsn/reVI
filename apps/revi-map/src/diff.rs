@@ -121,14 +121,16 @@ fn normalise(text: &str) -> String {
     }
     out.push_str(rest);
     out = out.replace("+----]", "]").replace("+----h]", "]");
+    let mut out = out
+        .split_whitespace()
+        .map(|w| w.trim_end_matches(','))
+        .collect::<Vec<_>>()
+        .join(" ");
     // A call to an import is `call [rip+x]` in the linked original and a plain
     // `call` here, because the object is not linked.
     out = out.replace("call QWORD PTR [rip]", "call");
     out = out.replace("call ----", "call");
-    out.split_whitespace()
-        .map(|w| w.trim_end_matches(','))
-        .collect::<Vec<_>>()
-        .join(" ")
+    out
 }
 
 /// Longest common subsequence over instruction text: insertions and deletions
@@ -174,6 +176,14 @@ mod tests {
         let b = normalise("mov rax,QWORD PTR [rip+0x0]");
         assert_eq!(a, b);
         assert_eq!(normalise("add rsp,0x20"), "add rsp,----");
+    }
+
+    #[test]
+    fn import_call_matches_a_plain_call() {
+        assert_eq!(
+            normalise("call   QWORD PTR [rip+0x11932a0]        # 0x67939c8"),
+            normalise("call   0x0")
+        );
     }
 
     #[test]
