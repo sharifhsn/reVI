@@ -10,7 +10,8 @@ the lab box (`aster`) on 2026-11-24; the licence was accepted by the owner.
 * Windows SDK **10.0.26100.0**
 
 Pinned here because a toolchain bump changes every function's bytes and
-invalidates comparisons:
+invalidates comparisons. The pin was tested against 19.30 and 19.36 on eight
+bodies and they are byte-identical, see `docs/decomp-toolset-pin.md`:
 
 ```
 msvc    19.52.37029
@@ -65,6 +66,5 @@ promotes a claim to `matching`.
   Compare with cookies present, not by stripping them.
 * COMDAT folding (`/OPT:ICF`) and function-level linking (`/Gy`) affect symbol
   layout, not bytes; do not chase object-level symbol order.
-* The retail build may have used a slightly different 19.4x/19.3x minor than
-  19.52; that is an open question, not an excuse. If a whole class of functions
-  is off by the same shape, try an older toolset before rewriting source.
+* The retail minor is probably not the variable (19.30 = 19.36 = 19.52 on every
+  test). Whole-program build (`/GL`) and PGO are the open suspects.

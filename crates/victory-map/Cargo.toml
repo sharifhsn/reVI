@@ -8,6 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+serde_json.workspace = true
+iced-x86.workspace = true
 victory-pe.workspace = true
 anyhow.workspace = true
 blake3.workspace = true

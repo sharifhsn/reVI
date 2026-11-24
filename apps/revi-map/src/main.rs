@@ -75,6 +75,24 @@ enum Cli {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// Walk code that has no `.pdata` record and classify the gaps.
+    Sweep {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        /// Ignore gaps smaller than this many bytes.
+        #[arg(long, default_value_t = 16)]
+        min: u32,
+    },
+    /// Build the direct call graph and a reachability set.
+    Graph {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        /// Shortest pointer run still counted as a table.
+        #[arg(long, default_value_t = 4)]
+        min_table: usize,
+    },
     /// Regenerate decomp/STATUS.md.
     Status { map: PathBuf, decomp: PathBuf },
 }
@@ -112,6 +130,8 @@ fn main() -> Result<()> {
                 .with_context(|| format!("bad rva {rva:?}"))?;
             diff::run(&exe, &map, rva, &source, out.as_deref())
         }
+        Cli::Graph { file, out, min_table } => victory_map::graph::run(&file, &out, min_table),
+        Cli::Sweep { file, out, min } => victory_map::sweep::run(&file, &out, min),
         Cli::Status { map, decomp } => claim::status(&map, &decomp),
     }
 }

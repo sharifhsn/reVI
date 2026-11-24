@@ -12,6 +12,18 @@ Output is byte-identical between Linux x86-64 and Windows 11 x86-64 (sha256 of t
 file `b37954a4…`, checked 2026-11-24 with `revi` built from the same commit on
 nightly), so a regeneration can be verified by diffing.
 
+## Strings
+
+`strings.csv` (`rva,section,len,enc,text`) is the literal census from `.rdata`
+and `.data`, ASCII and UTF-16, from 4 characters up: **76,201 strings**, 72,093
+of them in `.rdata`. Short property tokens dominate (`All`, `Unknown`,
+`Persistent`, `AllowMultiplayer`), which is why an 8-character threshold had
+found only 8,625.
+
+`.rdata` is **not** compressed: entropy 7.95 comes from the pointer tables and
+code-adjacent data it carries, while the literals themselves sit in plainly
+readable NUL-padded runs. Naming work can rely on it.
+
 Regenerate only for a different build, and update `decomp/build.json` in the
 same change. Afterwards run `revi status decomp/map/functions.csv decomp` and
 commit `STATUS.md` too. Never hand-edit rows: claims are validated against this

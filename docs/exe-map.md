@@ -48,8 +48,9 @@ Shape, without interpretation:
    have a reading; none has a run behind it.
 5. **The 220 GB around it.** `.data` is 71.2 MB and looks structured (entropy
    1.79) — that is where the globals, the four registration pointers and most
-   of the vtables live. `.rdata` is 9.0 MB at entropy 7.95, i.e. compressed or
-   encoded, and is not understood beyond its string pool.
+   of the vtables live. `.rdata` is 9.0 MB at entropy 7.95, high because of the
+   pointer tables it carries, but its literals are plain: 72,093 readable
+   strings sit in it.
 
 ## The job, mapped
 
@@ -86,8 +87,8 @@ scanner decides what is cheap, not a human.
    WARP run can record vectors.
 3. **The 7.5 MB without records.** Some is junk, some is real leaf code reached
    only by jump. Needs a linear sweep to separate.
-4. **`.rdata` at H 7.95.** If it is compressed, static strings are incomplete
-   and naming suffers.
+4. **`.rdata` at H 7.95.** Resolved: not compressed, literals are plain
+   (`decomp/map/strings.csv`). The entropy is pointer tables, not encoding.
 
 ### Non-goals
 

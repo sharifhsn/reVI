@@ -1,0 +1,14 @@
+{
+  "edges": 825041,
+  "functions": 299257,
+  "import_callers": 2095,
+  "pointer_tables": 7554,
+  "reachable": 82223,
+  "roots": 13140,
+  "roots_breakdown": {
+    "entry": 1,
+    "exports": 1,
+    "pointer_tables": 13138
+  },
+  "table_functions": 13138
+}
