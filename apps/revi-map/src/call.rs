@@ -180,7 +180,13 @@ pub fn run(
                     body.extend([0xFF, 0xD0]);
                 }
                 if !unresolved {
-                    body.extend([0x31, 0xC0]);
+                    match stub_return(&name) {
+                        Some(value) => {
+                            body.extend([0xB8]);
+                            body.extend(value.to_le_bytes());
+                        }
+                        None => body.extend([0x31, 0xC0]),
+                    }
                 }
                 body.extend([0x48, 0x83, 0xC4, 0x28, 0xC3]);
                 let at = emit(&body);
@@ -400,6 +406,28 @@ extern "win64" fn lookup(pc: u64, out_base: *mut u64) -> u64 {
         .iter()
         .find(|(start, end, _)| *start <= rva as u64 && (rva as u64) < *end)
         .map_or(0, |(_, _, record)| *record)
+}
+
+/// Known-good returns for stubs whose caller checks the result. Override with
+/// `REVI_STUB_RET=Symbol=0x<hex>,...`.
+#[cfg(target_arch = "x86_64")]
+fn stub_return(symbol: &str) -> Option<u32> {
+    if let Ok(spec) = std::env::var("REVI_STUB_RET") {
+        for pair in spec.split(',') {
+            if let Some((name, value)) = pair.split_once('=')
+                && name.trim() == symbol
+                && let Ok(v) = u32::from_str_radix(value.trim().trim_start_matches("0x"), 16)
+            {
+                return Some(v);
+            }
+        }
+    }
+    // Creating any handle must succeed; a plausible non-null value is enough.
+    matches!(
+        symbol,
+        "CreateSemaphoreExW" | "CreateEventW" | "CreateEventA" | "CreateEventExW"
+    )
+    .then_some(0x100)
 }
 
 const PROT_READ: i32 = 1;

@@ -1,1 +1,10 @@
-{"rva":23446576,"note":"factory; traps on stubbed CreateEventW failure","cases":[],"exe_runs":0,"game_runs":0}
+{
+  "rva": 23446576,
+  "note": "REVI_STUBS; CreateSemaphoreExW returns 0x100 so the success path is taken",
+  "cases": [
+    {"args": ["0"], "returns": "rax = 0x100 (the stubbed semaphore handle)", "exe_run": true},
+    {"args": ["0"], "returns": "traps on int3 when CreateSemaphoreExW is stubbed to 0", "exe_run": true}
+  ],
+  "exe_runs": 2,
+  "game_runs": 0
+}

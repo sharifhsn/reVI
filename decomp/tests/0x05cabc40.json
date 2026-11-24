@@ -1,1 +1,9 @@
-{"rva":60812352,"note":"fills g_slots[0..3]; cannot finish without CreateEventW","cases":[{"args":[],"returns":"four factory(0) results into g_slots"}],"exe_runs":0,"game_runs":0}
+{
+  "rva": 60812352,
+  "note": "REVI_STUBS, CreateSemaphoreExW stubbed to return 0x100",
+  "cases": [
+    {"args": [], "returns": "g_slots[0..3] = 0x100 each (four factory calls with selector 0)", "exe_run": true}
+  ],
+  "exe_runs": 1,
+  "game_runs": 0
+}
