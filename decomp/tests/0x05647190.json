@@ -1,0 +1,1 @@
+{"rva": 90340752, "note": "default path returns false; the +0x8 load is reached from outside", "cases": [{"args": [], "returns": "0"}], "runs": []}

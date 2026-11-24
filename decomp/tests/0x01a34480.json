@@ -1,0 +1,1 @@
+{"rva": 27477120, "note": "no return; effect is the vtable call with &g", "cases": [{"args": ["self"], "returns": "void", "effect": "calls self->vt[8](self, &local_holding_&g)"}], "runs": []}

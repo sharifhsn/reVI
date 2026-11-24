@@ -129,6 +129,10 @@ fn classify(
     }
     let mut signals = Vec::new();
     let mut score = 100i32;
+    if starts_like_tail(bytes) {
+        signals.push("tail");
+        score -= 30;
+    }
     if !has_call(bytes) {
         signals.push("leaf");
         score += 40;
@@ -150,6 +154,15 @@ fn classify(
         score -= 10;
     }
     (Class::Unique, signals, score)
+}
+
+/// Starts by restoring a frame it did not build: an epilogue fragment after a
+/// hot/cold split that still ends in `ret`.
+fn starts_like_tail(b: &[u8]) -> bool {
+    matches!(
+        b.get(..5),
+        Some([0x48, 0x8B, 0x5C | 0x6C | 0x74 | 0x7C, 0x24, _])
+    ) || matches!(b.get(..4), Some([0x48, 0x83 | 0x81, 0xC4, _]))
 }
 
 /// `jmp [rip+x]` (FF 25) or `jmp rel32` (E9) as the whole body.
@@ -270,6 +283,19 @@ fn merge(
 ) -> Vec<Body> {
     let mut bodies: Vec<Body> = Vec::with_capacity(functions.len());
     for f in functions {
+        // A chunk whose own last jump points *behind* its start is a cold tail
+        // of the body before it: attach backwards whatever the previous chunk
+        // ended with.
+        let loops_back = extent(data, info, f.begin_rva, f.len())
+            .is_some_and(ends_with_back_jump);
+        if loops_back
+            && let Some(last) = bodies.last_mut()
+            && last.end_rva == f.begin_rva
+        {
+            last.end_rva = f.end_rva;
+            last.chunks += 1;
+            continue;
+        }
         match bodies.last_mut() {
             Some(last) if last.end_rva == f.begin_rva && !ends_of(last, data, info) => {
                 last.end_rva = f.end_rva;
@@ -283,6 +309,15 @@ fn merge(
         }
     }
     bodies
+}
+
+/// True when the bytes end with a short/near unconditional jump backwards.
+fn ends_with_back_jump(bytes: &[u8]) -> bool {
+    match bytes {
+        [.., 0xEB, d] => i8::from_le_bytes([*d]) < 0,
+        [.., 0xE9, a, b, c, d] => i32::from_le_bytes([*a, *b, *c, *d]) < 0,
+        _ => false,
+    }
 }
 
 /// Does the body currently end in a return or unconditional jump? Look at the

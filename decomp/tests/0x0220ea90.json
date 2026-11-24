@@ -1,0 +1,1 @@
+{"rva": 35678864, "note": "same body as 0x01fa5270, slot +0x28", "cases": [{"args": [], "returns": "1", "effect": "calls g->table[5](&g)"}], "runs": []}

@@ -1,0 +1,1 @@
+{"rva": 11837584, "note": "index 0 returns the low float of the double, 1 the high", "cases": [{"args": ["o", "0"], "returns": "low 4 bytes of o->v reinterpreted as float"}, {"args": ["o", "1"], "returns": "high 4 bytes"}], "runs": []}
