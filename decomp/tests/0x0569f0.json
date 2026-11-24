@@ -1,0 +1,1 @@
+{"rva":355312,"note":"counted WaitForSingleObject loop; proven with counts 3 and 1 under REVI_STUBS","cases":[{"args":["buf","3"],"returns":"three stub waits with 0xffffffff"},{"args":["buf","1"],"returns":"one stub wait"}],"exe_runs":2,"game_runs":0}
