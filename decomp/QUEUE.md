@@ -5,6 +5,7 @@ Cheapest first. Claim with `revi claim decomp/map/functions.csv decomp <rva>`.
 Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 `strings` = references a literal, `import` = wraps an import.
 
+* `0x00037a50` 154 B — leaf, strings, tls, trylock (170)
 * `0x01fa5270` 28 B — leaf, tiny, strings, indirect (165)
 * `0x01fa5340` 28 B — leaf, tiny, strings, indirect (165)
 * `0x01fa5480` 28 B — leaf, tiny, strings, indirect (165)
@@ -13,7 +14,6 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x05b03670` 31 B — leaf, tiny, strings, indirect (165)
 * `0x056a2090` 5 B — leaf, tiny (160)
 * `0x055ff775` 8 B — leaf, tiny (160)
-* `0x055ebf5f` 14 B — leaf, tiny (160)
 * `0x05613878` 14 B — leaf, tiny (160)
 * `0x05647190` 19 B — leaf, tiny (160)
 * `0x00b4a090` 23 B — leaf, tiny (160)
@@ -27,6 +27,8 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x0560381e` 29 B — leaf, tiny (160)
 * `0x05603fde` 29 B — leaf, tiny (160)
 * `0x055ea040` 30 B — leaf, tiny (160)
+* `0x04fe0940` 305 B — leaf, strings, trylock (160)
+* `0x039e4140` 521 B — leaf, strings, trylock (160)
 * `0x021c3bb0` 53 B — leaf, strings (155)
 * `0x03326210` 56 B — leaf, strings (155)
 * `0x0332c880` 65 B — leaf, strings (155)
@@ -70,7 +72,6 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x014aad10` 149 B — leaf, strings (155)
 * `0x040d72a0` 150 B — leaf, strings (155)
 * `0x043445d0` 152 B — leaf, strings (155)
-* `0x00037a50` 154 B — leaf, strings (155)
 * `0x03be3a00` 154 B — leaf, strings (155)
 * `0x000738c0` 155 B — leaf, strings (155)
 * `0x001e0520` 155 B — leaf, strings (155)
@@ -167,6 +168,7 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x02d470c0` 262 B — leaf, strings (155)
 * `0x051f9ae0` 263 B — leaf, strings (155)
 * `0x04f3b730` 264 B — leaf, strings (155)
+* `0x00137310` 268 B — leaf, tls, trylock (155)
 * `0x03c97a60` 273 B — leaf, strings (155)
 * `0x02677340` 278 B — leaf, strings (155)
 * `0x0000be40` 285 B — leaf, strings (155)
@@ -179,7 +181,6 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x0540fe90` 303 B — leaf, strings (155)
 * `0x02fe9c90` 304 B — leaf, strings (155)
 * `0x0215dece` 305 B — leaf, strings (155)
-* `0x04fe0940` 305 B — leaf, strings (155)
 * `0x01642480` 308 B — leaf, strings (155)
 * `0x02f74380` 309 B — leaf, strings (155)
 * `0x02207d50` 315 B — leaf, strings (155)
@@ -204,4 +205,3 @@ Signals are hints, not requirements: `leaf` = no calls, `tiny` = <= 32 bytes,
 * `0x00f49050` 379 B — leaf, strings (155)
 * `0x04a68450` 380 B — leaf, strings (155)
 * `0x04a68620` 380 B — leaf, strings (155)
-* `0x04a6bcd0` 380 B — leaf, strings (155)

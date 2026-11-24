@@ -63,12 +63,13 @@ pub fn run(
     let info = ImageInfo::parse(&data).with_context(|| format!("parsing {}", file.display()))?;
     let functions = unwind_functions(&data, &info)
         .with_context(|| format!("reading extents from {}", file.display()))?;
-    let iat: Vec<(u32, u32)> = info
-        .imports
-        .iter()
-        .flat_map(|m| m.entries.iter())
-        .map(|e| (e.iat_slot_rva, e.iat_slot_rva + 8))
-        .collect();
+    // IAT slot -> symbol, for naming idioms by the import they call.
+    let mut iat: std::collections::BTreeMap<u32, String> = Default::default();
+    for module in &info.imports {
+        for entry in &module.entries {
+            iat.insert(entry.iat_slot_rva, entry.symbol.to_string());
+        }
+    }
 
     let merged = merge(&data, &info, &functions);
     let mut seen: HashMap<u64, u32> = HashMap::new();
@@ -134,7 +135,7 @@ fn classify(
     bytes: &[u8],
     base_rva: u32,
     info: &ImageInfo,
-    iat: &[(u32, u32)],
+    iat: &std::collections::BTreeMap<u32, String>,
 ) -> (Class, Vec<&'static str>, i32) {
     if bytes.len() as u32 > MAX_GIANT {
         return (Class::Giant, vec!["generated?"], -50);
@@ -171,6 +172,10 @@ fn classify(
         signals.push("indirect");
         score -= 10;
     }
+    for (signal, delta) in idioms(bytes, base_rva, iat) {
+        signals.push(signal);
+        score += delta;
+    }
     (Class::Unique, signals, score)
 }
 
@@ -202,6 +207,54 @@ fn has_indirect_call(b: &[u8]) -> bool {
 }
 
 /// A RIP-relative `lea` into a read-only section: almost always a literal.
+/// Compiler and library idioms that say what a body is. Each is cheap to spot
+/// and, unlike a score, survives into the queue as a label.
+fn idioms(
+    b: &[u8],
+    base_rva: u32,
+    iat: &std::collections::BTreeMap<u32, String>,
+) -> Vec<(&'static str, i32)> {
+    let mut found = Vec::new();
+    if b.windows(9).any(|w| w == [0x65, 0x48, 0x8B, 0x04, 0x25, 0x58, 0x00, 0x00, 0x00]) {
+        found.push(("tls", 10));
+    }
+    if b.contains(&0xCD) && b.windows(2).any(|w| w == [0xCD, 0x29]) {
+        found.push(("fastfail", 10));
+    }
+    if b.windows(3).any(|w| w == [0xF0, 0x0F, 0xB1]) {
+        found.push(("trylock", 5));
+    }
+    if b.windows(3).any(|w| w == [0xF0, 0x0F, 0xB0]) {
+        found.push(("atomic", 5));
+    }
+    for (i, w) in b.windows(2).enumerate() {
+        if w != [0xFF, 0x15] {
+            continue;
+        }
+        let Some(disp) = b.get(i + 2..i + 6) else { continue };
+        let disp = i32::from_le_bytes(disp.try_into().expect("4"));
+        let slot = base_rva.wrapping_add((i as i64 + 6 + i64::from(disp)) as u32);
+        let Some(name) = iat.get(&slot) else { continue };
+        let signal = if name.contains("Semaphore") {
+            Some(("semaphore", 10))
+        } else if name.starts_with("Rtl") {
+            Some(("unwind", 5))
+        } else if name.starts_with("Wait") {
+            Some(("wait", 10))
+        } else if name.starts_with("CloseHandle") {
+            Some(("close", 5))
+        } else {
+            None
+        };
+        if let Some(pair) = signal
+            && !found.contains(&pair)
+        {
+            found.push(pair);
+        }
+    }
+    found
+}
+
 fn has_string_ref(b: &[u8], base_rva: u32, info: &ImageInfo) -> bool {
     for (i, w) in b.windows(3).enumerate() {
         if w[0] == 0x48 && w[1] == 0x8D && w[2] & 0xC7 == 0x05 {
@@ -223,7 +276,7 @@ fn has_string_ref(b: &[u8], base_rva: u32, info: &ImageInfo) -> bool {
     false
 }
 
-fn has_import_call(b: &[u8], base_rva: u32, iat: &[(u32, u32)]) -> bool {
+fn has_import_call(b: &[u8], base_rva: u32, iat: &std::collections::BTreeMap<u32, String>) -> bool {
     for (i, w) in b.windows(2).enumerate() {
         if w != [0xFF, 0x15] {
             continue;
@@ -233,7 +286,7 @@ fn has_import_call(b: &[u8], base_rva: u32, iat: &[(u32, u32)]) -> bool {
         };
         let disp = i32::from_le_bytes(disp.try_into().expect("4 bytes"));
         let target = base_rva.wrapping_add((i as i64 + 6 + i64::from(disp)) as u32);
-        if iat.iter().any(|&(start, end)| target >= start && target < end) {
+        if iat.contains_key(&target) {
             return true;
         }
     }
