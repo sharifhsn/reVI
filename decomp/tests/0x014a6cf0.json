@@ -1,0 +1,10 @@
+{
+  "rva": 21687536,
+  "note": "table of 0x75 entries, 12 bytes each; buffer passed as arg1",
+  "cases": [
+    {"args": ["table", "0", "7", "0", "0xffffffff"], "returns": "entry[0] = value 7, count 1, handle 0x1ffff", "exe_run": true},
+    {"args": ["table", "0x75", "7", "0", "0xffffffff"], "returns": "no write (index out of range)"}
+  ],
+  "exe_runs": 1,
+  "game_runs": 0
+}
