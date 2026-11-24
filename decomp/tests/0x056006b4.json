@@ -1,13 +1,13 @@
 {
   "rva": 90179252,
-  "note": "runs under REVI_STUBS; loop exits on null lookup entry",
+  "note": "full walk observed: capture, lookup, unwind, lookup, unwind; image_base 0x140000000",
   "cases": [
     {
       "args": [
         "buf",
         "0"
       ],
-      "returns": "stubbed imports; see note"
+      "returns": "stubbed imports, see note"
     }
   ],
   "exe_runs": 1,
