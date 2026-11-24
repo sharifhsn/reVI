@@ -7,9 +7,15 @@ upstream's and keeps flowing in through the `upstream` remote; this fork adds
 the tooling that merges them without a review queue.
 
 Canonical remote (self-hosted, survives a GitHub takedown):
-<http://100.123.50.43:3300/sharif/reVI>. Mirror: this GitHub repo. Read
-[docs/decomp.md](docs/decomp.md) before contributing decomp work, then
-[CONTRIBUTING.md](CONTRIBUTING.md).
+<http://100.123.50.43:3300/sharif/reVI>. This GitHub repo is a mirror, updated
+every five minutes; open pull requests on the canonical one, where the
+automerger lives.
+
+What exists: the function map for build 1.0.2.1 (299,257 extents, reproducible
+byte-for-byte on Linux and Windows), `revi claim|check|status`, a bot that
+squash-merges `decomp/`-only PRs which pass the gate, and two claimed
+functions. Read [docs/decomp.md](docs/decomp.md) before contributing decomp
+work, then [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
