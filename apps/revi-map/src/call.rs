@@ -9,6 +9,8 @@
 //! value for the class of body where a vector is cheap, without the package.
 
 use std::path::Path;
+#[cfg(target_arch = "x86_64")]
+use std::sync::Mutex;
 
 use anyhow::{Result, bail};
 #[cfg(target_arch = "x86_64")]
@@ -99,25 +101,105 @@ pub fn run(
     }
 
     // Optional fake TEB for bodies that read gs:0x58 (thread index etc.).
-    // Optional import stubs: every IAT slot points at `xor eax,eax; ret` so an
-    // import-bound body can run and be observed. Not the real function.
     if std::env::var("REVI_STUBS").is_ok() {
-        let stub = unsafe { libc_mmap(std::ptr::null_mut(), 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
-        if stub as isize == -1 {
+        IMAGE_BASE.store(info.image_base, std::sync::atomic::Ordering::Relaxed);
+    }
+    // Optional import stubs. Every slot gets a tiny trampoline that records
+    // the call and returns 0 (or performs the one API whose effect matters).
+    let mut symbols: Vec<(usize, String)> = Vec::new();
+    if std::env::var("REVI_STUBS").is_ok() {
+        let page = unsafe { libc_mmap(std::ptr::null_mut(), 1 << 16, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
+        if page as isize == -1 {
             bail!("stub mmap failed");
         }
-        unsafe {
-            stub.write(0x31);        // xor eax,eax
-            stub.add(1).write(0xC0);
-            stub.add(2).write(0xC3); // ret
-            libc_mprotect(stub, 4096, PROT_READ | PROT_EXEC);
-        }
-        for module in &info.imports {
-            for entry in &module.entries {
-                let at = unsafe { mapped.add(entry.iat_slot_rva as usize) };
-                unsafe { at.cast::<u64>().write_unaligned(stub as u64) };
+        let mut cursor = page;
+        let mut emit = |body: &[u8]| -> *mut u8 {
+            let at = cursor;
+            unsafe {
+                std::ptr::copy_nonoverlapping(body.as_ptr(), cursor, body.len());
+                cursor = cursor.add(body.len());
+            }
+            at
+        };
+        if let Ok(path) = std::env::var("REVI_MAP")
+            && let Ok(map) = victory_map::read_map(Path::new(&path))
+            && let Some(pdata) = info.sections.iter().find(|s| s.name == ".pdata")
+        {
+            let entry = unsafe {
+                std::slice::from_raw_parts(
+                    mapped.add(pdata.rva as usize),
+                    pdata.file_size as usize,
+                )
+            };
+            let mut table = Vec::new();
+            for (i, chunk) in entry.as_chunks::<12>().0.iter().enumerate() {
+                let begin = u32::from_le_bytes(chunk[0..4].try_into().expect("4"));
+                let end = u32::from_le_bytes(chunk[4..8].try_into().expect("4"));
+                if map.contains_key(&begin) {
+                    table.push((
+                        u64::from(begin),
+                        u64::from(end),
+                        mapped as u64 + pdata.rva as u64 + (i * 12) as u64,
+                    ));
+                }
+            }
+            if let Ok(mut unwind) = UNWIND.lock() {
+                *unwind = table;
             }
         }
+
+        let mut index = 0usize;
+        for module in &info.imports {
+            for entry in &module.entries {
+                let name = entry.symbol.to_string();
+                let capture = name == "RtlCaptureContext";
+                let unresolved = name == "RtlLookupFunctionEntry";
+                // sub rsp,0x28 ; rax = return address (caller)
+                let mut body: Vec<u8> = vec![0x48, 0x83, 0xEC, 0x28, 0x48, 0x8B, 0x44, 0x24, 0x28];
+                if capture {
+                    body.extend([0x48, 0x89, 0x81, 0xF8, 0x00, 0x00, 0x00]);
+                }
+                if unresolved {
+                    body.extend([0x49, 0x89, 0xCA, 0x49, 0x89, 0xD3]); // r10=rcx, r11=rdx
+                }
+                // r9 = from ; r8 = arg2 ; rdx = arg1 ; rcx = slot
+                body.extend([0x49, 0x89, 0xC1, 0x49, 0x89, 0xD0, 0x48, 0x89, 0xCA, 0x48, 0xC7, 0xC1]);
+                body.extend((index as u32).to_le_bytes());
+                // mov rax, imm64 ; call rax ; [hook] ; epilogue. The stub page
+                // is far from the binary, so no rel32 calls.
+                let mut patches: Vec<(usize, u64)> = Vec::new();
+                body.extend([0x48, 0xB8]);
+                patches.push((body.len(), record as usize as u64));
+                body.extend([0u8; 8]);
+                body.extend([0xFF, 0xD0]);
+                if unresolved {
+                    body.extend([0x4C, 0x89, 0xD1, 0x4C, 0x89, 0xDA]);
+                    body.extend([0x48, 0xB8]);
+                    patches.push((body.len(), lookup as usize as u64));
+                    body.extend([0u8; 8]);
+                    body.extend([0xFF, 0xD0]);
+                }
+                if !unresolved {
+                    body.extend([0x31, 0xC0]);
+                }
+                body.extend([0x48, 0x83, 0xC4, 0x28, 0xC3]);
+                let at = emit(&body);
+                for (offset, target) in patches {
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            target.to_le_bytes().as_ptr(),
+                            at.add(offset),
+                            8,
+                        );
+                    }
+                }
+                let slot = unsafe { mapped.add(entry.iat_slot_rva as usize) };
+                unsafe { slot.cast::<u64>().write_unaligned(at as u64) };
+                symbols.push((index, entry.symbol.to_string()));
+                index += 1;
+            }
+        }
+        unsafe { libc_mprotect(page, 1 << 16, PROT_READ | PROT_EXEC) };
     }
 
     if std::env::var("REVI_GS").is_ok() {
@@ -194,6 +276,20 @@ pub fn run(
         hex(&raw)
     );
     println!("in rcx {inrcx:#x} rdx {inrdx:#x}");
+    if !symbols.is_empty() {
+        let records = RECORDS.lock().map(|r| r.clone()).unwrap_or_default();
+        for r in &records {
+            let name = symbols
+                .iter()
+                .find(|(i, _)| *i as u64 == r.0)
+                .map(|(_, n)| n.as_str())
+                .unwrap_or("?");
+            println!("stub {name} args {:x} {:x} {:x} {:x} from {:#x}", r.1, r.2, r.3, r.4, r.5);
+        }
+        if let Ok(mut r) = RECORDS.lock() {
+            r.clear();
+        }
+    }
     if let Some((addr, len)) = dump {
         let at = if addr == 0 { buf_ptr } else { addr };
         if at != 0 {
@@ -271,11 +367,51 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 #[cfg(target_arch = "x86_64")]
+#[cfg(target_arch = "x86_64")]
+#[cfg(target_arch = "x86_64")]
+static IMAGE_BASE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+#[cfg(target_arch = "x86_64")]
+static UNWIND: Mutex<Vec<(u64, u64, u64)>> = Mutex::new(Vec::new());
+
+#[cfg(target_arch = "x86_64")]
+static RECORDS: Mutex<Vec<(u64, u64, u64, u64, u64, u64)>> = Mutex::new(Vec::new());
+
+/// Called by every stub trampoline. Never panics: it runs on a foreign stack.
+#[cfg(target_arch = "x86_64")]
+extern "win64" fn record(slot: u64, a: u64, b: u64, from: u64) {
+    if let Ok(mut records) = RECORDS.lock() {
+        let base = IMAGE_BASE.load(std::sync::atomic::Ordering::Relaxed);
+        records.push((slot, a, b, 0, 0, from.saturating_sub(base)));
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+/// Plausible `RtlLookupFunctionEntry`: answer from the map when one is loaded,
+/// and always publish the image base the caller asked for.
+#[cfg(target_arch = "x86_64")]
+extern "win64" fn lookup(pc: u64, out_base: *mut u64) -> u64 {
+    let base = IMAGE_BASE.load(std::sync::atomic::Ordering::Relaxed);
+    if !out_base.is_null() {
+        unsafe { out_base.write_unaligned(base) };
+    }
+    let rva = pc.wrapping_sub(base);
+    let Ok(table) = UNWIND.lock() else { return 0 };
+    table
+        .iter()
+        .find(|(start, end, _)| *start <= rva as u64 && (rva as u64) < *end)
+        .map_or(0, |(_, _, record)| *record)
+}
+
 const PROT_READ: i32 = 1;
+#[cfg(target_arch = "x86_64")]
 const PROT_WRITE: i32 = 2;
+#[cfg(target_arch = "x86_64")]
 const PROT_EXEC: i32 = 4;
+#[cfg(target_arch = "x86_64")]
 const MAP_PRIVATE: i32 = 0x02;
+#[cfg(target_arch = "x86_64")]
 const MAP_ANONYMOUS: i32 = 0x20;
+#[cfg(target_arch = "x86_64")]
 const MAP_FIXED_NOREPLACE: i32 = 0x10_0000;
 
 #[cfg(target_arch = "x86_64")]

@@ -1,13 +1,13 @@
 {
   "rva": 90179368,
-  "note": "reaches TerminateProcess with rdx=0xC0000409 under REVI_STUBS",
+  "note": "all four imports observed in order; TerminateProcess got rdx=0xC0000409",
   "cases": [
     {
       "args": [
         "buf",
         "0"
       ],
-      "returns": "stubbed imports; see note"
+      "returns": "stubbed imports, see note"
     }
   ],
   "exe_runs": 1,

@@ -60,3 +60,19 @@ replay on a different machine, so anything layout-dependent is normalised.
 The harness is trusted when three contributors, on three machines, replay the
 same vector and get the same result. Until then, only `ported` is honest and
 `matching` means "my machine agrees".
+
+## What already exists (2026-11-24)
+
+The import and environment layers are built and proven in `revi call`, ahead of
+the loader harness:
+
+* `REVI_STUBS=1` fills every IAT slot with a recording trampoline that returns 0
+  and logs `symbol, arg1, arg2, return-address-as-RVA`;
+* `REVI_GS=1` fabricates a TEB (two indirections, slot byte at `+0x1294`);
+* `RtlCaptureContext` writes the caller address into `CONTEXT.Rip`;
+* `RtlLookupFunctionEntry` answers from the map by range and publishes the image
+  base; the walk in `0x056006b4` now completes both iterations.
+
+That is the harness's import, TEB and unwind halves minus the real APIs and the
+live title. What remains is trapping inside the running game and replaying
+vectors against it.
