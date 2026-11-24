@@ -11,7 +11,9 @@ use std::fmt::Write as _;
 use anyhow::{Context, Result, bail};
 use victory_map::read_map;
 
-const FLAGS: &[&str] = &["/nologo", "/O2", "/GS-", "/c"];
+// Project contract: C++20, RTTI off (the binary is stripped), exceptions on.
+// /GS is left out by default because only some bodies carry a cookie.
+const FLAGS: &[&str] = &["/nologo", "/O2", "/GS-", "/GR-", "/EHsc", "/std:c++20", "/c"];
 
 /// Compare the object built from `source` with the extent at `rva`.
 pub fn run(exe: &Path, map: &Path, rva: u32, source: &Path, out: Option<&Path>) -> Result<()> {

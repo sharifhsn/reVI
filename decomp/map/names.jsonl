@@ -1,0 +1,9 @@
+{"rva":5670016,"name":"sub_55ea040","role":"cookie_sentinel_rotl16","status":"proposed","evidence":"cmp against __security_cookie, exe vector rcx=rotl16(cookie)"}
+{"rva":90195760,"name":"g_cookie","role":"__security_cookie","status":"confirmed","evidence":"0x2B992DDFA232 default x64 cookie value"}
+{"rva":90300544,"name":"sub_55ea040","role":"cookie_check_rotate","status":"populated"}
+{"rva":21687536,"name":"sub_14a6cf0","role":"write_stream_entry","status":"proposed","evidence":"12-byte entries, handle pack, run wrote {7,1,0x1ffff}"}
+{"rva":227920,"name":"sub_37a50","role":"try_reserve_slot","status":"proposed","evidence":"cmpxchg retry, bit25 reserved, tail call g_slots[slot](1)"}
+{"rva":158681520,"name":"g_chunks","role":"chunk descriptor table","status":"proposed","evidence":"indexed by p[0x30], desc has base/stride/map"}
+{"rva":123263856,"name":"g_slots","role":"slot handler table","status":"proposed","evidence":"tail call target after successful reservation"}
+{"rva":11837584,"name":"sub_b4a090","role":"float_half_of_double","status":"confirmed","evidence":"exe vectors 0.0f and 3.140625f for the halves of 50.0"}
+{"rva":33067120,"name":"sub_1fa5270","role":"call_slot5_with_global_addr","status":"confirmed","evidence":"instruction-identical; needs state, faults on null global"}

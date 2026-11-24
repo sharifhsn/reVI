@@ -100,7 +100,7 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
         claims.insert(rva, claim);
     }
 
-    for (dir, suffix) in [("src", "c"), ("notes", "md"), ("tests", "json")] {
+    for (dir, suffix) in [("src", "cpp"), ("notes", "md"), ("tests", "json")] {
         for entry in read_dir(&decomp.join(dir))? {
             let Some(rva) = rva_from_file(&entry) else {
                 problems.push(format!(
