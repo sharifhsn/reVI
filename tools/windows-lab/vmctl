@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# Drive a Windows lab VM over QEMU's monitor, VNC and an HTTP channel.
+#
+# The VM is a normal QEMU process on the lab host; this script is host-side
+# and deliberately dumb. Every subcommand takes a screenshot's word for it --
+# read the PNG before and after typing, because none of these paths are
+# acknowledged for you.
+#
+#   vmctl status                  is the VM up, what is it doing
+#   vmctl shot                    screendump -> $LAB_DIR/shot.png (asks for eyes)
+#   vmctl type "text" [-n]        type text (Enter unless -n)
+#   vmctl key meta_l-x            send one chord (qcode names)
+#   vmctl wake                    wake a blanked display and screenshot
+#   vmctl ssh [cmd]               ssh in on $SSH_PORT (hostfwd must exist)
+#   vmctl click X Y [--double]    click at screenshot coordinates
+#   vmctl mon "info usernet"      raw monitor command with output
+#   vmctl put FILE                serve FILE to the guest; prints the guest command
+#   vmctl get GUESTPATH           ask the guest to upload it, wait, save locally
+#   vmctl srv start|stop|status   HTTP transfer channel on the host
+#   vmctl start | stop            boot / power off the VM
+#
+# Config: lab.env next to this script (see lab.env.example).
+
+set -euo pipefail
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=/dev/null
+. "${LAB_ENV:-$HERE/lab.env}"
+
+R="$HERE/remote"
+MON=${MON_SOCK:-$LAB_DIR/$(echo "$VMNAME" | tr -c 'a-z0-9' -).sock}
+VNC_PORT=$((5900 + VNC_DISPLAY))
+HTTP_DIR=${HTTP_DIR:-$LAB_DIR/http}
+UP_DIR=${UP_DIR:-$LAB_DIR/up}
+
+export LAB_MON=$MON LAB_VNC_PORT=$VNC_PORT LAB_SHOT_W=1280 LAB_SHOT_H=800
+
+running() { pgrep -f "name $VMNAME" >/dev/null; }
+
+need_vm() {
+	running || { echo "VM $VMNAME is not running" >&2; exit 1; }
+	[ -S "$MON" ] || { echo "no monitor socket at $MON" >&2; exit 1; }
+}
+
+case ${1:-} in
+status)
+	running && echo "$VMNAME: running" || echo "$VMNAME: stopped"
+	[ -S "$MON" ] && python3 "$R/mon.py" "info status" "info usernet" | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'
+	;;
+shot)
+	need_vm
+	out=${2:-$LAB_DIR/shot.png}
+	ppm=${out%.png}.ppm
+	python3 "$R/shot.py" "$ppm"
+	if command -v pnmtopng >/dev/null; then
+		pnmtopng "$ppm" >"$out"
+		rm -f "$ppm"
+	else
+		out=$ppm
+	fi
+	echo "$out"
+	;;
+type)
+	need_vm
+	shift
+	if [ "${*: -1}" = "-n" ]; then
+		text=${*:1:$#-1}
+		python3 "$R/type.py" -n "$text"
+	else
+		python3 "$R/type.py" "$*"
+	fi
+	;;
+key)
+	need_vm
+	shift
+	cmds=()
+	for k in "$@"; do cmds+=("sendkey $k"); done
+	python3 "$R/mon.py" "${cmds[@]}"
+	;;
+wake)
+	# wakes a blanked guest display, then screenshots it
+	need_vm
+	python3 "$R/mon.py" "sendkey shift" >/dev/null
+	sleep 1
+	"$0" shot "${2:-$LAB_DIR/shot.png}"
+	;;
+ssh)
+	need_vm
+	shift
+	# key first, then the account password via SSH_ASKPASS. ssh needs no tty
+	# for that if setsid detaches it, which is why this looks odd.
+	if [ -n "${GUEST_PASSWORD:-}" ]; then
+		printf '#!/bin/sh\necho %s\n' "$GUEST_PASSWORD" >"$LAB_DIR/askpass.sh"
+		chmod +x "$LAB_DIR/askpass.sh"
+		export SSH_ASKPASS=$LAB_DIR/askpass.sh SSH_ASKPASS_REQUIRE=force
+	fi
+	exec setsid -w ssh -i "$SSH_KEY" -p "$SSH_PORT" -o StrictHostKeyChecking=no \
+		-o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1 \
+		-o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null "$GUEST_USER"@127.0.0.1 "$@"
+	;;
+click)
+	need_vm
+	python3 "$R/click.py" "$@"
+	;;
+mon)
+	need_vm
+	shift
+	python3 "$R/mon.py" "$@"
+	;;
+put)
+	src=$2
+	mkdir -p "$HTTP_DIR"
+	cp "$src" "$HTTP_DIR/"
+	name=$(basename "$src")
+	echo "guest: curl -s -o C:\\$name http://10.0.2.2:$HTTP_PORT/$name"
+	;;
+get)
+	path=$2
+	mkdir -p "$UP_DIR"
+	name=$(basename "${path//\\//}")
+	rm -f "$UP_DIR/$name"
+	need_vm
+	# over ssh when the box answers, on the console otherwise
+	ssh_ok=0
+	if timeout 15 bash -c "'"$0"' ssh true" >/dev/null 2>&1; then ssh_ok=1; fi
+	if [ "$ssh_ok" = 1 ]; then
+		"$0" ssh "curl -s --upload-file $path http://10.0.2.2:$UPLOAD_PORT/$name" || true
+	else
+		python3 "$R/type.py" "curl -s --upload-file $path http://10.0.2.2:$UPLOAD_PORT/$name"
+	fi
+	for _ in $(seq 1 40); do
+		[ -s "$UP_DIR/$name" ] && break
+		sleep 0.25
+	done
+	[ -s "$UP_DIR/$name" ] || { echo "upload did not arrive" >&2; exit 1; }
+	echo "$UP_DIR/$name"
+	;;
+srv)
+	mkdir -p "$HTTP_DIR" "$UP_DIR"
+	case ${2:-} in
+	start)
+		running_srv() { pgrep -f "upload-server.py" >/dev/null; }
+		if running_srv; then echo "already up"; exit 0; fi
+		setsid nohup python3 -m http.server "$HTTP_PORT" --bind 0.0.0.0 \
+			--directory "$HTTP_DIR" >"$LAB_DIR/http.log" 2>&1 &
+		setsid nohup python3 "$R/upload-server.py" "$UP_DIR" "$UPLOAD_PORT" \
+			>"$LAB_DIR/upload.log" 2>&1 &
+		sleep 1
+		ss -ltn | grep -E ":$HTTP_PORT|:$UPLOAD_PORT" || { echo "ports not listening" >&2; exit 1; }
+		;;
+	stop) pkill -f "upload-server.py" || true; pkill -f "http.server $HTTP_PORT" || true ;;
+	status) ss -ltn | grep -E ":$HTTP_PORT|:$UPLOAD_PORT" || echo "down" ;;
+	*) echo "usage: vmctl srv start|stop|status" >&2; exit 2 ;;
+	esac
+	;;
+start)
+	running && { echo "already running"; exit 0; }
+	mkdir -p "$LAB_DIR" "$TPM_DIR"
+	umount /boot/efi 2>/dev/null || true
+	[ -f "$TPM_DIR/tpm2-00.permall" ] || {
+		swtpm_setup --tpm2 --tpmstate "$TPM_DIR" --create-ek-cert --create-platform-cert \
+			--lock-nvram --not-overwrite >/dev/null 2>&1 || true
+	}
+	cp -n "$OVMF_VARS_SRC" "$LAB_DIR/vars.fd" 2>/dev/null || true
+	# -qmp must precede -monitor or qemu aborts on a property clash.
+	setsid qemu-system-x86_64 \
+		-name "$VMNAME",debug-threads=on \
+		-machine q35,accel=kvm -cpu host -smp 6 -m 8192 \
+		-drive if=pflash,format=raw,unit=0,readonly=on,file="$OVMF_CODE" \
+		-drive if=pflash,format=raw,unit=1,file="$LAB_DIR/vars.fd" \
+		-chardev socket,id=chrtpm,path="$TPM_DIR/tpm.sock" \
+		-tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0 \
+		-drive file="$DISK_ESP",if=none,id=esp,format=raw,cache=none \
+		-device virtio-blk-pci,drive=esp \
+		-drive file="$DISK_WINDOWS",if=none,id=win,format=raw,cache=none \
+		-device virtio-blk-pci,drive=win \
+		-netdev user,id=n1,hostfwd=tcp:127.0.0.1:"$SSH_PORT"-:22 \
+		-device e1000e,netdev=n1 \
+		-vga std -display none -vnc 127.0.0.1:"$VNC_DISPLAY" \
+		-device usb-tablet -device usb-kbd \
+		-qmp unix:"${MON%.sock}.qmp",server,nowait \
+		-monitor unix:"$MON",server,nowait \
+		>"$LAB_DIR/qemu.log" 2>&1 &
+	sleep 3
+	running && echo "started, monitor $MON, vnc 127.0.0.1:$VNC_PORT"
+	;;
+stop)
+	need_vm
+	python3 "$R/mon.py" "system_powerdown" >/dev/null
+	for _ in $(seq 1 60); do running || break; sleep 1; done
+	running && { echo "still up, forcing"; pkill -f "name $VMNAME"; }
+	;;
+*)
+	sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+	exit 2
+	;;
+esac

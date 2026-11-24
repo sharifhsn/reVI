@@ -6,6 +6,7 @@
 //! `victory-loader`, which uses the raw offsets exported from [`layout`].
 
 mod image;
+pub mod functions;
 pub mod implib;
 pub mod layout;
 

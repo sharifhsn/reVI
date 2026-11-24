@@ -1,0 +1,16 @@
+[package]
+name = "victory-map"
+description = "Function extents from an image's exception directory, for a matching decompilation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+victory-pe.workspace = true
+anyhow.workspace = true
+blake3.workspace = true
+
+[lints]
+workspace = true

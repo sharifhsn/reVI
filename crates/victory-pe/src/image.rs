@@ -45,6 +45,15 @@ pub struct SectionInfo {
     pub characteristics: u32,
 }
 
+impl SectionInfo {
+    /// True when the section may hold executable code.
+    #[must_use]
+    pub fn is_executable(&self) -> bool {
+        has_flag(self.characteristics, layout::section_flags::EXECUTE)
+            || has_flag(self.characteristics, layout::section_flags::CODE)
+    }
+}
+
 /// One imported DLL and the functions taken from it.
 #[derive(Debug, Clone)]
 pub struct ImportModule {
@@ -236,8 +245,8 @@ impl ImageInfo {
     }
 }
 
-fn has_flag(value: u16, flag: u16) -> bool {
-    value & flag != 0
+fn has_flag<T: std::ops::BitAnd<Output = T> + PartialEq + From<u8>>(value: T, flag: T) -> bool {
+    value & flag != T::from(0)
 }
 
 fn utf8(bytes: &[u8]) -> String {

@@ -1,0 +1,10 @@
+{
+  "title": "Grand Theft Auto VI (Xbox Series X|S)",
+  "build": "1.0.2.1",
+  "exe": "game_scarlett_master.exe",
+  "sha256": "e95020b2fa4a721db3df59fdecf75621730ac559d8835252f6c3b658d5a08993",
+  "sha256_source": "Jake-Jensen/GTAVI_Xbox_ReverseEngineering, two examined copies",
+  "size": 120181760,
+  "blake3": null,
+  "note": "blake3 is recorded by the first person to run `revi map --record` on their own copy"
+}

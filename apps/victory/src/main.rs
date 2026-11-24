@@ -105,6 +105,16 @@ enum Command {
         #[arg(last = true)]
         title_args: Vec<String>,
     },
+    /// List every function extent in an image (for a matching decompilation).
+    Map {
+        file: PathBuf,
+        /// Write the records here (CSV; JSONL with --jsonl).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// One JSON object per line instead of CSV.
+        #[arg(long)]
+        jsonl: bool,
+    },
     /// Show the resolved configuration and check it.
     Config,
 }
@@ -161,6 +171,7 @@ fn main() -> Result<()> {
             console,
             title_args: _,
         } => run::run(&exe, unimplemented, strict, execute, console),
+        Command::Map { file, out, jsonl } => victory_map::run(&file, out.as_deref(), jsonl),
         Command::Config => show_config(),
     }
 }
