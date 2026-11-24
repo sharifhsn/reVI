@@ -2,10 +2,10 @@
 # Status
 
 Functions mapped: **299257**  
-Claimed: **3** (0.000% of mapped bytes)  
+Claimed: **4** (0.000% of mapped bytes)  
 Matching: **0**
 
 * claimed: 1
-* ported: 2
+* ported: 3
 
 Classes: 1 291680, 10 1, 13 1, 2 3317, 3 225, 4 17, 5 24, 6 6, 7 3

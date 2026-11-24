@@ -1,0 +1,8 @@
+{
+  "rva": 33067120,
+  "note": "codegen identical: 28/28 bytes, same opcodes, RIP displacements relinked",
+  "cases": [
+    {"args": [], "returns": "1", "effect": "calls g->table[6](&g)"}
+  ],
+  "runs": []
+}
