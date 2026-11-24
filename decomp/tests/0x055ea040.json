@@ -1,0 +1,10 @@
+{
+  "rva": 90300544,
+  "note": "returns nothing; result is left in rcx",
+  "cases": [
+    {"args": ["0x2b992ddfa232"], "returns": "rcx = 0x2b992ddfa2320000 (rotl16 of the cookie)", "exe_run": true},
+    {"args": ["0x1122334455667788"], "returns": "rcx unchanged, tail call 0x5600570", "exe_run": true}
+  ],
+  "exe_runs": 2,
+  "game_runs": 0
+}

@@ -101,6 +101,11 @@ fn normalise(text: &str) -> String {
     // Drop objdump's trailing comment, then blank every hex displacement: they
     // are relocations in the original and zero in a fresh object.
     let text = text.split("  #").next().unwrap_or(text);
+    // Drop ` <symbol+offset>` and the bare target before it.
+    let text = match text.find(" <") {
+        Some(at) => text[..at].trim_end().trim_end_matches(|c: char| c.is_ascii_hexdigit()),
+        None => text,
+    };
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(at) = rest.find("0x") {

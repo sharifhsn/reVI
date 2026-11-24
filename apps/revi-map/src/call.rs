@@ -115,7 +115,7 @@ pub fn run(
     let top = stack as usize + stack_size - 64;
 
     let entry = unsafe { mapped.add(rva as usize) };
-    let (rax, rdx): (u64, u64);
+    let (rax, rdx, rcx_out): (u64, u64, u64);
     static mut XMM: [u8; 48] = [0; 48];
     let scratch = &raw mut XMM;
     unsafe {
@@ -132,7 +132,7 @@ pub fn run(
             inout("r15") scratch => _,
             top = in(reg) top,
             fun = in(reg) entry,
-            inout("rcx") args.first().copied().unwrap_or(0) => _,
+            inout("rcx") args.first().copied().unwrap_or(0) => rcx_out,
             inout("rdx") args.get(1).copied().unwrap_or(0) => rdx,
             inout("r8") args.get(2).copied().unwrap_or(0) => _,
             inout("r9") args.get(3).copied().unwrap_or(0) => _,
@@ -149,7 +149,7 @@ pub fn run(
     let low = u64::from_le_bytes(raw[..8].try_into().expect("8"));
     let f = f64::from_bits(low);
     println!(
-        "rva {rva:#010x} args {args:x?} -> rax {rax:#x} rdx {rdx:#x} xmm0 low {low:#018x} (as f64 {f}) xmm-raw {}",
+        "rva {rva:#010x} args {args:x?} -> rax {rax:#x} rcx {rcx_out:#x} rdx {rdx:#x} xmm0 low {low:#018x} (as f64 {f}) xmm-raw {}",
         hex(&raw)
     );
     println!("in rcx {inrcx:#x} rdx {inrdx:#x}");
