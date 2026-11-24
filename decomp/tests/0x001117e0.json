@@ -1,10 +1,11 @@
 {
   "rva": 1120224,
-  "note": "derived from reading, not yet recorded from a run",
+  "note": "recorded with `revi call`; 0x16 short-circuits without calling",
   "cases": [
-    {"args": ["0x16", "0"], "returns": "0"},
-    {"args": ["0x00", "0"], "returns": "1 if sub_4f76200(0) in {4,5}, else 0"},
+    {"args": ["0x16", "0"], "returns": "rax 0x0 (al=0, false)"},
+    {"args": ["0x00", "0"], "returns": "al=0 in this image state: sub_4f76200(0) & 0xfe != 4"},
     {"args": ["0x17", "0"], "returns": "same as 0x00: only 0x16 short-circuits"}
   ],
-  "runs": []
+  "exe_runs": 3,
+  "game_runs": 0
 }

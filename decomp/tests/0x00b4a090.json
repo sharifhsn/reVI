@@ -1,1 +1,10 @@
-{"rva": 11837584, "note": "index 0 returns the low float of the double, 1 the high", "cases": [{"args": ["o", "0"], "returns": "low 4 bytes of o->v reinterpreted as float"}, {"args": ["o", "1"], "returns": "high 4 bytes"}], "runs": []}
+{
+  "rva": 11837584,
+  "note": "recorded with `revi call` (image mapped, no game files); index 0 and 1 of the double 50.0",
+  "cases": [
+    {"args": ["o", "0"], "returns": "0.0f (low half of the double 50.0 = 0x4049000000000000)"},
+    {"args": ["o", "1"], "returns": "3.140625f (high half, 0x40490000)"}
+  ],
+  "exe_runs": 2,
+  "game_runs": 0
+}

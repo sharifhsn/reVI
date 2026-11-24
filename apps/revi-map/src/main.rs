@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::Parser;
 
+mod call;
 mod check;
 mod claim;
 mod diff;
@@ -96,8 +97,34 @@ enum Cli {
         #[arg(long, default_value_t = 4)]
         min_table: usize,
     },
+    /// Call one function out of the image (leaf bodies only).
+    Call {
+        exe: PathBuf,
+        /// Function RVA in hex.
+        rva: String,
+        /// Integer argument, repeatable, up to four.
+        #[arg(long = "arg", value_parser = parse_int)]
+        args: Vec<u64>,
+        /// Dump memory after the call, `addr:len` (hex:decimal).
+        #[arg(long)]
+        dump: Option<String>,
+        /// Allocate a zeroed buffer of this many bytes and pass its address as
+        /// argument 1.
+        #[arg(long, value_parser = parse_int)]
+        arg_buf: Option<u64>,
+        /// Write a float64 into the argument buffer, `offset:value` (offset hex).
+        #[arg(long = "f64")]
+        floats: Vec<String>,
+    },
     /// Regenerate decomp/STATUS.md.
     Status { map: PathBuf, decomp: PathBuf },
+}
+
+fn parse_int(text: &str) -> Result<u64, std::num::ParseIntError> {
+    match text.strip_prefix("0x") {
+        Some(hex) => u64::from_str_radix(hex, 16),
+        None => text.parse(),
+    }
 }
 
 fn main() -> Result<()> {
@@ -136,6 +163,48 @@ fn main() -> Result<()> {
         }
         Cli::Graph { file, out, min_table } => victory_map::graph::run(&file, &out, min_table),
         Cli::Sweep { file, out, min } => victory_map::sweep::run(&file, &out, min),
+        Cli::Call {
+            exe,
+            rva,
+            args,
+            dump,
+            arg_buf,
+            floats,
+        } => {
+            let rva = u32::from_str_radix(rva.trim_start_matches("0x"), 16)
+                .with_context(|| format!("bad rva {rva:?}"))?;
+            let buf = arg_buf.map(|len| {
+                let len = len as usize;
+                let writes = floats
+                    .iter()
+                    .map(|f| {
+                        let (o, v) = f.split_once(':').context("--f64 wants offset:value")?;
+                        Ok::<_, anyhow::Error>((
+                            u32::from_str_radix(o.trim_start_matches("0x"), 16)? as usize,
+                            v.parse::<f64>()?,
+                        ))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok::<_, anyhow::Error>((len, writes))
+            }).transpose()?;
+            let dump = dump.as_deref().map(|d| {
+                let (a, l) = d.split_once(':').unwrap_or((d, ""));
+                let len = if l.is_empty() {
+                    buf.as_ref().map_or(64, |b| b.0)
+                } else {
+                    parse_int(l)? as usize
+                };
+                Ok::<_, anyhow::Error>((
+                    if a == "buf" {
+                        0
+                    } else {
+                        u64::from_str_radix(a.trim_start_matches("0x"), 16)?
+                    },
+                    len,
+                ))
+            }).transpose()?;
+            call::run(&exe, rva, args.clone(), dump, buf)
+        }
         Cli::Status { map, decomp } => claim::status(&map, &decomp),
     }
 }
