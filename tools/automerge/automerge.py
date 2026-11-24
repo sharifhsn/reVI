@@ -125,7 +125,11 @@ def check_pull(pull):
         )
         if result.returncode:
             tail = (result.stdout + result.stderr).strip().splitlines()
-            problems = [line.strip() for line in tail if line.strip().startswith("0")]
+            problems = [
+                line.strip()
+                for line in tail
+                if line.startswith("  ") and line.strip()
+            ]
             reasons += problems[:12] or ["`revi check` failed"]
     finally:
         subprocess.run(
@@ -155,7 +159,8 @@ def process(pull):
         f"/pulls/{number}/merge",
         {"Do": "squash", "MergeTitleField": f"{pull['title']} (#{number})"},
     )
-    if merged and not merged.get("_status"):
+    state = api("GET", f"/pulls/{number}") or {}
+    if state.get("merged") or (merged and not merged.get("_status")):
         comment(number, "Merged automatically: `decomp/`-only and `revi check` clean.")
         print(f"#{number} merged")
     else:
