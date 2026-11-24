@@ -9,7 +9,8 @@ exempt from rule #1.
 | Path | What | Hand-written |
 |---|---|---|
 | `map/functions.csv` | every function the compiler emitted: `rva,size,section` | no, `revi map` |
-| `map/classes.jsonl` | one classification per RVA (middleware, subsystem, confidence) | yes, one line at a time |
+| `map/candidates.csv` | per-RVA class and cheapness score | no, `revi scan` |
+| `QUEUE.md` | the cheapest 200 unclaimed functions | no, `revi scan` |
 | `map/names.jsonl` | proposed name and signature per RVA | yes |
 | `claims/0x<rva>.json` | who took an RVA, its status, its extent | yes, one file per function |
 | `src/0x<rva>.c` | the decompiled body | yes |
@@ -28,5 +29,8 @@ exempt from rule #1.
    (three runs); `stale` → untouched for 30 days and free again.
 4. **Delete the claim and the files together.** An abandoned claim is worse
    than none.
+5. **Aliases count once.** `revi scan` marks a body that already exists
+   elsewhere as `alias` with its twin in `alias_of`; decompile the twin, claim
+   the alias with a note pointing at it, do not duplicate the work.
 5. **Additive only.** A PR usually adds whole files under `decomp/`. If it has
    to touch `Cargo.toml`, CI or `tools/`, a human reads it first.

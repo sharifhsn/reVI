@@ -44,6 +44,19 @@ enum Cli {
         #[arg(long)]
         owner: String,
     },
+    /// Classify every function: thunks, padding, duplicates, giants, the rest.
+    Scan {
+        file: PathBuf,
+        /// Where the candidate CSV goes.
+        #[arg(long)]
+        out: PathBuf,
+        /// Also write a ranked work queue (Markdown).
+        #[arg(long)]
+        queue: Option<PathBuf>,
+        /// How many rows the queue keeps.
+        #[arg(long, default_value_t = 200)]
+        top: usize,
+    },
     /// Regenerate decomp/STATUS.md.
     Status { map: PathBuf, decomp: PathBuf },
 }
@@ -63,6 +76,12 @@ fn main() -> Result<()> {
                 .with_context(|| format!("bad rva {rva:?}"))?;
             claim::claim(&map, &decomp, rva, size, &owner)
         }
+        Cli::Scan {
+            file,
+            out,
+            queue,
+            top,
+        } => victory_map::scan::run(&file, &out, queue.as_deref(), top),
         Cli::Status { map, decomp } => claim::status(&map, &decomp),
     }
 }

@@ -3,6 +3,8 @@
 //! Reads the image's exception directory and prints (or writes) one record per
 //! function. No code bytes are copied out; RVAs, sizes and section names only.
 
+pub mod scan;
+
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
