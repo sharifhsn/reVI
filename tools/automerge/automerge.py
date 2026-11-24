@@ -166,9 +166,18 @@ def process(pull):
 def main():
     if not TOKEN:
         sys.exit("REVI_TOKEN is not set")
-    pulls = api("GET", f"/pulls?state=open&labels={LABEL}&limit=50") or []
-    for pull in pulls if isinstance(pulls, list) else []:
-        process(pull)
+    pulls = api("GET", "/pulls?state=open&limit=50")
+    if not isinstance(pulls, list):
+        print(f"listing failed: {pulls}")
+        return
+    for pull in pulls:
+        names = [
+            label["name"]
+            for label in api("GET", f"/issues/{pull['number']}/labels") or []
+            if isinstance(label, dict) and "name" in label
+        ]
+        if LABEL in names:
+            process(pull)
 
 
 def watch(interval):
