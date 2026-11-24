@@ -1,0 +1,1 @@
+{"rva":60812352,"note":"fills g_slots[0..3]; cannot finish without CreateEventW","cases":[{"args":[],"returns":"four factory(0) results into g_slots"}],"exe_runs":0,"game_runs":0}
