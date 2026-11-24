@@ -1,11 +1,44 @@
 {
   "rva": 227920,
-  "note": "needs TEB: run with REVI_GS=1; success path tail-calls g_slots[slot]",
+  "note": "needs TEB: REVI_GS=1; imports stubbed with REVI_STUBS",
   "cases": [
-    {"args": ["word=2", "1", "1"], "returns": "no change (generation 1 < stamp 2)", "exe_run": true},
-    {"args": ["word=0x02000000", "0", "0"], "returns": "no change (bit 25 set)", "exe_run": true},
-    {"args": ["word=0", "0", "0"], "returns": "CAS reserve, then fault at the null handler", "exe_run": true}
+    {
+      "args": [
+        "word=2",
+        "1",
+        "1"
+      ],
+      "returns": "no change (generation 1 < stamp 2)",
+      "exe_run": true
+    },
+    {
+      "args": [
+        "word=0x02000000",
+        "0",
+        "0"
+      ],
+      "returns": "no change (bit 25 set)",
+      "exe_run": true
+    },
+    {
+      "args": [
+        "word=0",
+        "0",
+        "0"
+      ],
+      "returns": "CAS reserve, then fault at the null handler",
+      "exe_run": true
+    },
+    {
+      "args": [
+        "word=0",
+        "0",
+        "0"
+      ],
+      "returns": "word becomes 0x10000000 (slot 0 reserved), then handler at 0x2a1be0 -> 0x569f5 waits",
+      "exe_run": true
+    }
   ],
-  "exe_runs": 3,
+  "exe_runs": 4,
   "game_runs": 0
 }
