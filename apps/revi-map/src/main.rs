@@ -40,6 +40,9 @@ enum Cli {
         /// Part of the function, in bytes (default: all of it).
         #[arg(long)]
         size: Option<u32>,
+        /// How many adjacent compiler-split chunks this body spans.
+        #[arg(long, default_value_t = 1)]
+        chunks: u32,
         /// Your handle, as it should appear in the claim.
         #[arg(long)]
         owner: String,
@@ -70,11 +73,12 @@ fn main() -> Result<()> {
             decomp,
             rva,
             size,
+            chunks,
             owner,
         } => {
             let rva = u32::from_str_radix(rva.trim_start_matches("0x"), 16)
                 .with_context(|| format!("bad rva {rva:?}"))?;
-            claim::claim(&map, &decomp, rva, size, &owner)
+            claim::claim(&map, &decomp, rva, size, chunks, &owner)
         }
         Cli::Scan {
             file,

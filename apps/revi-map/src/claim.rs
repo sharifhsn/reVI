@@ -14,13 +14,21 @@ use crate::check::{claimed_rvas, read_map};
 struct Claim {
     rva: u32,
     size: u32,
+    chunks: u32,
     status: &'static str,
     owner: String,
     /// ISO date, so stale claims can be aged without git archaeology.
     claimed_at: String,
 }
 
-pub fn claim(map: &Path, decomp: &Path, rva: u32, size: Option<u32>, owner: &str) -> Result<()> {
+pub fn claim(
+    map: &Path,
+    decomp: &Path,
+    rva: u32,
+    size: Option<u32>,
+    chunks: u32,
+    owner: &str,
+) -> Result<()> {
     let extents = read_map(map)?;
     let Some(&mapped) = extents.get(&rva) else {
         bail!(
@@ -28,9 +36,24 @@ pub fn claim(map: &Path, decomp: &Path, rva: u32, size: Option<u32>, owner: &str
             map.display()
         );
     };
-    let size = size.unwrap_or(mapped);
-    if size == 0 || size > mapped {
-        bail!("size {size} outside the mapped extent {mapped}");
+    let chunks = chunks.max(1);
+    let mut span = mapped;
+    if chunks > 1 {
+        let mut at = rva;
+        for _ in 1..chunks {
+            let Some(&next) = extents.range(at + 1..).next().map(|(k, _)| k) else {
+                bail!("{chunks} chunks run past the end of the map");
+            };
+            if next != at + extents[&at] {
+                bail!("chunks after {at:#08x} are not contiguous");
+            }
+            span += extents[&next];
+            at = next;
+        }
+    }
+    let size = size.unwrap_or(span);
+    if size == 0 || (chunks == 1 && size > mapped) || size > span {
+        bail!("size {size} outside the claimed {chunks}-chunk span {span}");
     }
     let claims = decomp.join("claims");
     std::fs::create_dir_all(&claims).with_context(|| format!("creating {}", claims.display()))?;
@@ -50,6 +73,7 @@ pub fn claim(map: &Path, decomp: &Path, rva: u32, size: Option<u32>, owner: &str
     let record = Claim {
         rva,
         size,
+        chunks,
         status: "claimed",
         owner: owner.to_owned(),
         claimed_at: today(),

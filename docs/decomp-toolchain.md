@@ -1,0 +1,54 @@
+# Toolchain
+
+How to produce objects that can be compared with the retail binary. Set up on
+the lab box (`aster`) on 2026-11-24; the licence was accepted by the owner.
+
+## Installed
+
+* `msvc-wine` (`mstorsjo/msvc-wine`, current main), Wine 10.0, `msitools`
+* MSVC **19.52.37029** x64 (`~/msvc/bin/x64`)
+* Windows SDK **10.0.26100.0**
+
+Pinned here because a toolchain bump changes every function's bytes and
+invalidates comparisons:
+
+```
+msvc    19.52.37029
+sdk     10.0.26100.0
+wine    10.0
+flags   /O2 /GS- (add /GS only when the function has a stack cookie in the original)
+```
+
+## Compiling
+
+```sh
+export BIN=$HOME/msvc/bin/x64
+export PATH=$BIN:$PATH
+. ~/msvc-wine/msvcenv-native.sh
+cl /nologo /O2 /GS- /c decomp/src/0x<rva>.c
+objdump -d 0x<rva>.obj
+```
+
+`cl` is a Wine wrapper; `msvcenv-native.sh` sets `INCLUDE`/`LIB` so the same
+environment also drives `clang-cl` and `lld-link` if a native path is needed.
+
+## Comparing
+
+Byte comparison is per function: dump the extent from the user's exe with
+`revi map` RVAs, and diff it against the object's `.text`. `objdiff` gives
+relocation-aware, normalised output and is the intended tool once several
+functions are in flight; a one-liner suffices for single functions.
+
+A mismatch is not a failure. Record the byte counts and the shape of the
+difference in the note, as `notes/0x001117e0.md` does. Only an oracle run
+promotes a claim to `matching`.
+
+## Known gaps
+
+* `/GS` differs per function: the scans show stack cookies in some bodies.
+  Compare with cookies present, not by stripping them.
+* COMDAT folding (`/OPT:ICF`) and function-level linking (`/Gy`) affect symbol
+  layout, not bytes; do not chase object-level symbol order.
+* The retail build may have used a slightly different 19.4x/19.3x minor than
+  19.52; that is an open question, not an excuse. If a whole class of functions
+  is off by the same shape, try an older toolset before rewriting source.

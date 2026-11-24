@@ -53,13 +53,21 @@ classes, none of which need a human:
 | `leaf` | no calls, small, string-free | the first real queue |
 | `scored` | everything else, ranked by strings, imports, size | the long tail |
 
+**Extents are chunks, not always functions.** MSVC splits bodies around EH
+functlets and cold parts, and each piece gets its own unwind record. `revi scan`
+joins a piece to the next unless it ends in `ret`/`jmp`/`jmp [rip+x]`, marks the
+result `split` with a chunk count, and `revi claim --chunks N` pins that span so
+`revi check` can validate it. 3,204 bodies are still split after the join, and a
+split body is harder than a whole one, so they sort lower.
+
 Deliverables: `decomp/map/candidates.csv`, generated `decomp/QUEUE.md`, and a
 count per class in `STATUS.md`. The classification is also a public good; other
 projects can read it.
 
 ## Phase 1 — prove the loop
 
-1. `msvc-wine` on the lab box; pin the toolchain version in `decomp/build.json`.
+1. `msvc-wine` on the lab box; versions pinned in `docs/decomp-toolchain.md`
+   (19.52.37029 / SDK 10.0.26100 / /O2 /GS-).
 2. `revi diff <rva>`: compile our file to a COFF object, diff against the
    original extent with `objdiff` semantics, and score it. No GUI.
 3. Oracle harness per `docs/decomp-harness.md` — traps, vectors, replay.

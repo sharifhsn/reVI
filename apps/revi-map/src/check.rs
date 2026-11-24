@@ -16,9 +16,16 @@ const STATUSES: [&str; 4] = ["claimed", "ported", "matching", "stale"];
 struct Claim {
     rva: u32,
     size: u32,
+    /// How many adjacent `.pdata` extents the claim spans (default 1).
+    #[serde(default = "one")]
+    chunks: u32,
     status: String,
     /// Who took it. Free text; the bot only checks it is there.
     owner: String,
+}
+
+fn one() -> u32 {
+    1
 }
 
 pub fn run(map: &Path, decomp: &Path) -> Result<()> {
@@ -47,7 +54,31 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
             problems.push(format!("claims/{}: rva not in the map", name(&entry)));
             continue;
         };
-        if claim.size == 0 || claim.size > mapped {
+        if claim.chunks > 1 {
+            let mut at = rva;
+            let mut span = mapped;
+            for _ in 1..claim.chunks {
+                let Some(&next) = extents.range(at + 1..).next().map(|(k, _)| k) else {
+                    problems.push(format!("claims/{}: runs past the map", name(&entry)));
+                    break;
+                };
+                if next != at + extents[&at] {
+                    problems.push(format!("claims/{}: chunks are not contiguous", name(&entry)));
+                    break;
+                }
+                span += extents[&next];
+                at = next;
+            }
+            if claim.size != span {
+                problems.push(format!(
+                    "claims/{}: size {} does not cover {} chunks ({span})",
+                    name(&entry),
+                    claim.size,
+                    claim.chunks
+                ));
+            }
+        }
+        if claim.size == 0 || (claim.chunks <= 1 && claim.size > mapped) {
             problems.push(format!(
                 "claims/{}: size {} outside the mapped {mapped}",
                 name(&entry),

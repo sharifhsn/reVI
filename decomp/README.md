@@ -29,7 +29,10 @@ exempt from rule #1.
    (three runs); `stale` → untouched for 30 days and free again.
 4. **Delete the claim and the files together.** An abandoned claim is worse
    than none.
-5. **Aliases count once.** `revi scan` marks a body that already exists
+5. **Know your extent.** A `.pdata` record can be a fragment of a function.
+   `revi scan` merges fragments into bodies and says how many it joined; claim
+   a split body with `--chunks N`, never a bare fragment.
+6. **Aliases count once.** `revi scan` marks a body that already exists
    elsewhere as `alias` with its twin in `alias_of`; decompile the twin, claim
    the alias with a note pointing at it, do not duplicate the work.
 5. **Additive only.** A PR usually adds whole files under `decomp/`. If it has

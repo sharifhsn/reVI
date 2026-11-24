@@ -41,6 +41,8 @@ impl Class {
 pub struct Row {
     pub rva: u32,
     pub size: u32,
+    /// How many `.pdata` extents this body was assembled from (>1 = split).
+    pub chunks: u32,
     pub class: Class,
     pub score: i32,
     pub signals: Vec<&'static str>,
@@ -59,13 +61,18 @@ pub fn run(file: &Path, out: &Path, queue: Option<&Path>, top: usize) -> Result<
         .map(|e| (e.iat_slot_rva, e.iat_slot_rva + 8))
         .collect();
 
+    let merged = merge(&data, &info, &functions);
     let mut seen: HashMap<u64, u32> = HashMap::new();
-    let mut rows = Vec::with_capacity(functions.len());
-    for f in &functions {
+    let mut rows = Vec::with_capacity(merged.len());
+    for f in &merged {
         let Some(bytes) = extent(&data, &info, f.begin_rva, f.len()) else {
             continue;
         };
-        let (class, signals, score) = classify(bytes, f.begin_rva, &info, &iat);
+        let (class, mut signals, mut score) = classify(bytes, f.begin_rva, &info, &iat);
+        if f.chunks > 1 {
+            signals.push("split");
+            score -= 5 * (f.chunks as i32 - 1).min(6);
+        }
         let mut alias_of = None;
         let class = if class == Class::Unique {
             let digest = digest(bytes);
@@ -85,6 +92,7 @@ pub fn run(file: &Path, out: &Path, queue: Option<&Path>, top: usize) -> Result<
         rows.push(Row {
             rva: f.begin_rva,
             size: f.len(),
+            chunks: f.chunks,
             class,
             score,
             signals,
@@ -239,6 +247,57 @@ fn count(rows: &[Row]) -> Vec<(&'static str, usize)> {
     out
 }
 
+/// A body after merging compiler-split chunks.
+struct Body {
+    begin_rva: u32,
+    end_rva: u32,
+    chunks: u32,
+}
+
+impl Body {
+    fn len(&self) -> u32 {
+        self.end_rva - self.begin_rva
+    }
+}
+
+/// MSVC splits functions around EH funclets and cold parts, and each piece
+/// carries its own unwind record. Join a piece to the next while the first
+/// does not end in a return or unconditional jump.
+fn merge(
+    data: &[u8],
+    info: &ImageInfo,
+    functions: &[victory_pe::functions::UnwindFunction],
+) -> Vec<Body> {
+    let mut bodies: Vec<Body> = Vec::with_capacity(functions.len());
+    for f in functions {
+        match bodies.last_mut() {
+            Some(last) if last.end_rva == f.begin_rva && !ends_of(last, data, info) => {
+                last.end_rva = f.end_rva;
+                last.chunks += 1;
+            }
+            _ => bodies.push(Body {
+                begin_rva: f.begin_rva,
+                end_rva: f.end_rva,
+                chunks: 1,
+            }),
+        }
+    }
+    bodies
+}
+
+/// Does the body currently end in a return or unconditional jump? Look at the
+/// last few bytes, because a `jmp rel8` ends with its displacement.
+fn ends_of(body: &Body, data: &[u8], info: &ImageInfo) -> bool {
+    let start = body.end_rva.saturating_sub(8);
+    let Some(window) = extent(data, info, start, body.end_rva - start) else {
+        return true;
+    };
+    matches!(
+        window,
+        [.., 0xC3 | 0xC2] | [.., 0xE9 | 0xEB, _] | [.., 0xFF, 0x25, _, _, _, _]
+    )
+}
+
 fn write_csv(out: &Path, rows: &[Row]) -> Result<()> {
     if let Some(parent) = out.parent()
         && !parent.as_os_str().is_empty()
@@ -246,14 +305,15 @@ fn write_csv(out: &Path, rows: &[Row]) -> Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     let mut writer = BufWriter::new(std::fs::File::create(out)?);
-    writeln!(writer, "rva,size,class,score,signals,alias_of")?;
+    writeln!(writer, "rva,size,chunks,class,score,signals,alias_of")?;
     for r in rows {
         let alias = r.alias_of.map(|a| format!("{a:08x}")).unwrap_or_default();
         writeln!(
             writer,
-            "{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{}",
             r.rva,
             r.size,
+            r.chunks,
             r.class.name(),
             r.score,
             r.signals.join("+"),
@@ -277,8 +337,13 @@ fn write_queue(path: &Path, rows: &[Row], top: usize) -> Result<()> {
          `strings` = references a literal, `import` = wraps an import.\n\n",
     );
     for r in queue.iter().take(top) {
+        let chunks = if r.chunks > 1 {
+            format!(" in {} chunks", r.chunks)
+        } else {
+            String::new()
+        };
         text.push_str(&format!(
-            "* `{:#010x}` {} B — {} ({})\n",
+            "* `{:#010x}` {} B{chunks} — {} ({})\n",
             r.rva,
             r.size,
             r.signals.join(", "),
