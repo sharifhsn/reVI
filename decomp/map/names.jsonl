@@ -3,7 +3,7 @@
 {"rva": 1120224, "name": "sub_1117e0", "role": "mapped_state_byte", "status": "ported", "evidence": "call result masked, low byte == 4, 0 when arg == 0x16"}
 {"rva": 2759408, "name": "sub_2a1af0", "role": "range_guard_under_read_lock", "status": "ported", "evidence": "read-lock acquire 0x347fd0, lookup 0x358990, vtable pred 0x58 + floats 0x38/0x40, ORed mask vs float floor"}
 {"rva": 2759648, "name": "sub_2a1be0", "role": "slot wait thunk", "status": "proposed", "evidence": "tail of 0x2a1b90 (+0x50), jmp to counted wait 0x569f0"}
-{"rva": 6730624, "name": "sub_66b380", "role": "detach_from_owner", "status": "ported", "evidence": "clears a0+0x41 after releasing a0+0x30"}
+{"rva": 6730624, "name": "sub_66b380", "role": "detach_child", "status": "ported", "evidence": "child state cleared to 0 through 0xb844a0, owner flag 0x41 cleared; four vtable pointers, no direct callers"}
 {"rva": 11837584, "name": "sub_b4a090", "role": "float_half_of_double", "status": "confirmed", "evidence": "exe vectors 0.0f and 3.140625f for the halves of 50.0"}
 {"rva": 21654768, "name": "sub_14a6cf0", "role": "write_stream_entry", "status": "ported", "evidence": "12-byte entries, handle pack, run wrote {7,1,0x1ffff}"}
 {"rva": 22234896, "name": "sub_1534710", "role": "CloseHandle thunk", "status": "proposed", "evidence": "jmp [rdata] into the CloseHandle import slot; tail of 0x15346c0"}

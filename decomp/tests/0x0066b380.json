@@ -1,1 +1,9 @@
-{"rva": 6730624, "runs": []}
+{
+  "rva": 6730624,
+  "note": "virtual; needs an owner with a child and a state setter to observe",
+  "cases": [
+    {"args": ["owner{child=alloc}"], "returns": "child field's state byte == 0, owner flag == 0", "exe_run": false}
+  ],
+  "exe_runs": 0,
+  "game_runs": 0
+}
