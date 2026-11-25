@@ -1,9 +1,25 @@
-{"rva":5670016,"name":"sub_55ea040","role":"cookie_sentinel_rotl16","status":"proposed","evidence":"cmp against __security_cookie, exe vector rcx=rotl16(cookie)"}
-{"rva":90195760,"name":"g_cookie","role":"__security_cookie","status":"confirmed","evidence":"0x2B992DDFA232 default x64 cookie value"}
-{"rva":90300544,"name":"sub_55ea040","role":"cookie_check_rotate","status":"populated"}
-{"rva":21687536,"name":"sub_14a6cf0","role":"write_stream_entry","status":"proposed","evidence":"12-byte entries, handle pack, run wrote {7,1,0x1ffff}"}
-{"rva":227920,"name":"sub_37a50","role":"try_reserve_slot","status":"proposed","evidence":"cmpxchg retry, bit25 reserved, tail call g_slots[slot](1)"}
-{"rva":158681520,"name":"g_chunks","role":"chunk descriptor table","status":"proposed","evidence":"indexed by p[0x30], desc has base/stride/map"}
-{"rva":123596736,"name":"g_slots","role":"slot handler table","status":"proposed","evidence":"tail call target after successful reservation"}
-{"rva":11837584,"name":"sub_b4a090","role":"float_half_of_double","status":"confirmed","evidence":"exe vectors 0.0f and 3.140625f for the halves of 50.0"}
-{"rva":33067120,"name":"sub_1fa5270","role":"call_slot5_with_global_addr","status":"confirmed","evidence":"instruction-identical; needs state, faults on null global"}
+{"rva": 227920, "name": "sub_37a50", "role": "try_reserve_slot", "status": "confirmed", "evidence": "cmpxchg retry, bit25 reserved, tail call 0x2a1be0(g_slots[slot], 1); exe vectors confirm the return paths"}
+{"rva": 354800, "name": "sub_569f0", "role": "counted_wait", "status": "confirmed", "evidence": "exe vectors: count 3 -> 3 stub calls, count 1 -> 1"}
+{"rva": 1120224, "name": "sub_1117e0", "role": "mapped_state_byte", "status": "ported", "evidence": "call result masked, low byte == 4, 0 when arg == 0x16"}
+{"rva": 2759408, "name": "sub_2a1af0", "role": "range_guard_under_read_lock", "status": "ported", "evidence": "read-lock acquire 0x347fd0, lookup 0x358990, vtable pred 0x58 + floats 0x38/0x40, ORed mask vs float floor"}
+{"rva": 2759648, "name": "sub_2a1be0", "role": "slot wait thunk", "status": "proposed", "evidence": "tail of 0x2a1b90 (+0x50), jmp to counted wait 0x569f0"}
+{"rva": 6730624, "name": "sub_66b380", "role": "detach_from_owner", "status": "ported", "evidence": "clears a0+0x41 after releasing a0+0x30"}
+{"rva": 11837584, "name": "sub_b4a090", "role": "float_half_of_double", "status": "confirmed", "evidence": "exe vectors 0.0f and 3.140625f for the halves of 50.0"}
+{"rva": 21654768, "name": "sub_14a6cf0", "role": "write_stream_entry", "status": "ported", "evidence": "12-byte entries, handle pack, run wrote {7,1,0x1ffff}"}
+{"rva": 22234896, "name": "sub_1534710", "role": "CloseHandle thunk", "status": "proposed", "evidence": "jmp [rdata] into the CloseHandle import slot; tail of 0x15346c0"}
+{"rva": 23471152, "name": "sub_1662430", "role": "semaphore_factory", "status": "ported", "evidence": "CreateSemaphoreExW(0, selector, 0x7fff, 0, 0, 0x100002) with lock+retry"}
+{"rva": 27477120, "name": "sub_1a34480", "role": "virtual_dispatch_global", "status": "ported", "evidence": "stores a global vftable to a frame slot, calls slot +0x40"}
+{"rva": 33182320, "name": "sub_1fa5270", "role": "call_slot6_with_global_addr", "status": "confirmed", "evidence": "instruction-identical; needs state, faults on null global"}
+{"rva": 33182528, "name": "sub_1fa5340", "role": "alias_of_1fa5270", "status": "confirmed", "evidence": "byte-identical body, different RIP displacement"}
+{"rva": 33182848, "name": "sub_1fa5480", "role": "alias_of_1fa5270", "status": "confirmed", "evidence": "third copy, different RIP displacement"}
+{"rva": 35711632, "name": "sub_220ea90", "role": "call_slot5_with_global_addr", "status": "confirmed", "evidence": "instruction-identical except slot +0x28"}
+{"rva": 38288080, "name": "sub_2483ad0", "role": "close_all_slots", "status": "ported", "evidence": "five CloseHandle calls over g_slots[0..4]"}
+{"rva": 90087488, "name": "sub_55ea040", "role": "cookie_check_rotate", "status": "confirmed", "evidence": "cmp __security_cookie, rol16, low-half test, ror16, tail call"}
+{"rva": 90178928, "name": "sub_5600570", "role": "cookie_init", "status": "ported", "evidence": "fills the exception record, fastfail if present"}
+{"rva": 90179252, "name": "sub_56006b4", "role": "stack_walker", "status": "ported", "evidence": "RtlCaptureContext + two RtlVirtualUnwind"}
+{"rva": 90179368, "name": "sub_5600728", "role": "last_chance_filter", "status": "ported", "evidence": "clears the filter, runs it, TerminateProcess(0xc0000409)"}
+{"rva": 90468752, "name": "sub_5647190", "role": "zero_stub", "status": "confirmed", "evidence": "body is `return 0`"}
+{"rva": 90840776, "name": "sub_56a1ec8", "role": "entry_point", "status": "confirmed", "evidence": "IMAGE_OPTIONAL_HEADER::AddressOfEntryPoint"}
+{"rva": 97172544, "name": "sub_5cabc40", "role": "fill_slots", "status": "ported", "evidence": "five factory(0) calls into g_slots"}
+{"rva": 108929080, "name": "g_cookie", "role": "__security_cookie", "status": "confirmed", "evidence": "0x2B992DDFA232 default x64 cookie value"}
+{"rva": 123596736, "name": "g_slots", "role": "slot handle table", "status": "proposed", "evidence": "five qword handles 0x75defc0..0x75defe0, filled by 0x5cabc40, closed by 0x2483ad0"}

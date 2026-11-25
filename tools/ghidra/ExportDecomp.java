@@ -61,7 +61,7 @@ public class ExportDecomp extends GhidraScript {
 
         FunctionManager fm = currentProgram.getFunctionManager();
         long done = 0, failed = 0;
-        try (PrintWriter out = new PrintWriter(args[0])) {
+        try (PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter(args[0])))) {
             for (Function f : fm.getFunctions(true)) {
                 if (monitor.isCancelled()) break;
                 long rva = f.getEntryPoint().getOffset();
@@ -76,7 +76,8 @@ public class ExportDecomp extends GhidraScript {
                 out.println("{\"rva\":" + rva + ",\"name\":\"" + json(f.getName()) + "\",\"c\":\""
                         + json(code == null ? "" : code) + "\"}");
                 done++;
-                if (done % 500 == 0) {
+                if (done % 200 == 0) {
+                    out.flush();
                     println("exported " + done + ", failed " + failed);
                 }
             }

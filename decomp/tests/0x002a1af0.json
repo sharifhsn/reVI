@@ -1,0 +1,10 @@
+{
+  "rva": 2759408,
+  "note": "needs a live object: read lock at +0x30, tag at +0x4, id at +0x8, vtable record from the lookup",
+  "cases": [
+    {"args": ["obj{a1=0,a2=0}"], "returns": "0 when the lookup misses", "exe_run": false},
+    {"args": ["obj with record, pred=0"], "returns": "0, lock still balanced", "exe_run": false}
+  ],
+  "exe_runs": 0,
+  "game_runs": 0
+}

@@ -28,10 +28,10 @@ functions, then use the loop on a subsystem, and only then attempt a rebuild.
    SDK on Linux through Wine: <https://github.com/mstorsjo/msvc-wine>. Same
    version family, same flags, and `/O2 /GS /guard:cf` are all visible in the
    headers already.
-5. **Decompiler output is a skeleton, not a result.** Ghidra's decompiler plus
-   RTTI and vtable recovery (`classinformer`, Ghidra's RTTI script, OOAnalyzer)
-   produces compilable-shaped C++ and names; `m2c` and `decomp-permuter` fill
-   gaps and grind the last instructions. Humans own the structure.
+5. **Decompiler output is a skeleton, not a result.** kuna's decompiler plus
+   its MSVC class pass (`rtti`/`kuna_msvcclasses`, RTTI-gated) produces
+   compilable-shaped C++ and names; `m2c` and `decomp-permuter` fill gaps and
+   grind the last instructions. Humans own the structure.
 6. **Legal position is better than folklore.** Sega v. Accolade (1992) and
    Sony v. Connectix (2000) protect intermediate copying for interoperability;
    Google v. Oracle (2021) protects reimplementation. Take-Two's 2021 action

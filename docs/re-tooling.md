@@ -3,19 +3,20 @@
 What is installed, what each part is for, and the rule that keeps its output
 honest.
 
-## Ghidra headless
+## Drafting: kuna
 
-`tools/ghidra/decomp.sh <exe> <out.jsonl> [rva-list]` runs `analyzeHeadless`
-with `ExportDecomp.java`, which decompiles functions to one JSON object per RVA.
+The drafting decompiler is kuna (fork `sharifhsn/kuna`, Apache-2.0, Rust),
+built from source on `aster`; see `docs/decomp-kuna.md` for the invocation, the
+address convention and the map-to-boundaries conversion. Ghidra is retired.
 
-* **Output goes to notes context, never to `src/`.** Its C is a draft: no real
-  types, wrong struct widths, invented names, and it does not compile. It exists
-  to remove the blank page, not to be committed.
-* Analysis of 120 MB dominates the first run; the project is kept so later runs
-  only decompile.
-* Ghidra 12.2 needs **JDK 25** (`/usr/lib/jvm/java-25-openjdk-amd64`). JDK 21 is
-  rejected as unsupported.
-* Run it in the background and collect later; it is not interactive.
+* **Output goes to notes context, never to `src/`.** Its C is a draft: invented
+  types, and it does not compile as-is. It exists to remove the blank page, not
+  to be committed.
+* Batch, do not loop: a single function reloads the 120 MB image per call.
+* Feed it our `.pdata` extents with `--only-declared`; its own discovery
+  over-reports by ~130 k starts.
+* Its `warnings` array marks every place the printer rewrote control flow; read
+  those bodies by hand, not from the draft.
 
 ## Idiom detection
 
