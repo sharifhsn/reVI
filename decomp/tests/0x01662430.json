@@ -1,10 +1,11 @@
 {
-  "rva": 23446576,
-  "note": "REVI_STUBS; CreateSemaphoreExW returns 0x100 so the success path is taken",
+  "rva": 23203888,
+  "note": "needs a real CreateSemaphoreExW or a stub that fails once then succeeds",
   "cases": [
-    {"args": ["0"], "returns": "rax = 0x100 (the stubbed semaphore handle)", "exe_run": true},
-    {"args": ["0"], "returns": "traps on int3 when CreateSemaphoreExW is stubbed to 0", "exe_run": true}
+    {"args": [0], "returns": "non-null handle, CreateSemaphoreExW called once with (null,0,0x7fff,null,0,0x100002)", "exe_run": false},
+    {"args": [0], "returns": "stub fails once with ERROR_NOT_ENOUGH_MEMORY: trim called, second create succeeds", "exe_run": false},
+    {"args": [0], "returns": "stub fails twice: second is_oom(false) then int3", "exe_run": false}
   ],
-  "exe_runs": 2,
+  "exe_runs": 0,
   "game_runs": 0
 }
