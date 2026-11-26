@@ -63,7 +63,7 @@ same scanner is reused there by file path.
 
 1. WGSL is the checked-in form; `.dxbc`/`.spv` are build inputs.
 2. Nothing ships that naga rejects.
-3Parent. A shader that cannot be translated keeps its DXBC plus a note saying
+3. A shader that cannot be translated keeps its DXBC plus a note saying
    which construct blocked it — never a hand-guessed WGSL.
 4. WebGPU limits (binding counts, uniform buffer sizes) are checked at extraction
    time, so an untranslatable shader is known before the port, not during it.
