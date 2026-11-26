@@ -23,3 +23,5 @@
 {"rva": 97172544, "name": "sub_5cabc40", "role": "fill_slots", "status": "ported", "evidence": "five factory(0) calls into g_slots"}
 {"rva": 108929080, "name": "g_cookie", "role": "__security_cookie", "status": "confirmed", "evidence": "0x2B992DDFA232 default x64 cookie value"}
 {"rva": 123596736, "name": "g_slots", "role": "slot handle table", "status": "proposed", "evidence": "five qword handles 0x75defc0..0x75defe0, filled by 0x5cabc40, closed by 0x2483ad0"}
+{"rva": 370888128, "name": "vtbl_161b4dc0", "role": "vtable, 59 slots, one ctor 0x16f7080", "status": "confirmed", "evidence": "contiguous .rdata run of text pointers; ctor stores it at this+0; slot 13 is 0x66b380"}
+{"rva": 370914896, "name": "vtbl_161bb650", "role": "vtable, 97 slots, seven ctors", "status": "confirmed", "evidence": "contiguous .rdata run of text pointers; shared base of a ten-vfptr object; slot 43 is 0x66b380"}
