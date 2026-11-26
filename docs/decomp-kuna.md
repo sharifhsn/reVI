@@ -61,6 +61,10 @@ kuna decompile-project <exe> -o /tmp/kexp --layout rva-file --only-declared \
 `index.jsonl` (`rva`, `end_rva`, `c_file`, `c_offset`, `c_len`), so a claim RVA
 maps to a file without slicing a 750 MB `.c`.
 
+`--addr @FILE` takes the same selector file, one address per line, so batches no
+longer have to fit in argv. `--no-asm` is only needed when the data appendix is
+unwanted; code sections are scoped to the selection since 1978.
+
 For one function, `kuna decompile <exe> 0x<vma> --addr` is enough; it costs
 30–90 s because the image is reloaded, so batch rather than loop.
 
@@ -85,8 +89,9 @@ Known weak spots, so check these before believing a body:
   `/GR-` images.
 
 Upstream: issues 1968, 1969 (both weak spots above), 1970 (no-RTTI vftables),
-1972 (outlining). 1971 (boundaries, per-RVA export, 300 k scale) is done and
-verified on this image.
+1972 (outlining) stay open. 1971 (boundaries, per-RVA export, 300 k scale) and
+1978 (asm scoped to the selection, now 810x smaller, plus `--addr @FILE`) are
+done and verified.
 
 ## Skill
 
