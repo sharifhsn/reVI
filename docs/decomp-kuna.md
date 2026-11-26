@@ -111,7 +111,9 @@ These are generic (fixture-gated, no title knowledge) and are filed for an agent
 upstream 1997 (`fid`/`flirt` recipe, annotation, measured false positives), 1998
 (mutate-to-match loop), 1999 (x64 SEH reconstruction), plus the scoped
 implementation comments on 1970 (vftable seeding) and 1972 (twin detector).
-Runtime-side and in this repo: Forgejo #4, the PE loader shim.
+The PE loader shim is public too (2000). Rule: generic decompilation, harness
+and runtime work goes on the public GitHub tracker; only title-specific claims,
+notes and evidence stay on Forgejo.
 
 `tools/kuna-monitor.sh` watches fork branches and issue comments, checks a new
 branch out into a throwaway worktree, builds it with the shared target dir, and
