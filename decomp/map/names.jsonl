@@ -18,6 +18,7 @@
 {"rva": 38288080, "name": "sub_2483ad0", "role": "close_all_slots", "status": "ported", "evidence": "five CloseHandle calls over g_slots[0..4]"}
 {"rva": 71055520, "name": "sub_43c38a0", "role": "subrender_pool_init", "status": "claimed", "evidence": "creates 5 threads (dat_149c3d660 = 5), names them Subrender:%02u, installs each slot via 0x43c4140"}
 {"rva": 71057728, "name": "sub_43c4140", "role": "set_thread_slot", "status": "ported", "evidence": "the only writer of the TEB TLS byte at +0x1294; per-slot record table 0x149c3d6a8 + slot*0x40, in-use flag TLS+0x1110"}
+{"rva": 71058288, "name": "sub_43c4370", "role": "gpu_job_run", "status": "claimed", "evidence": "TLS job/payload install, 0x55cc020 pass begin into a ring at a1+0x12290, commit 0x55cc0c0, invoke 0x1443c3890, release 0x4deb5a0"}
 {"rva": 90087488, "name": "sub_55ea040", "role": "cookie_check_rotate", "status": "confirmed", "evidence": "cmp __security_cookie, rol16, low-half test, ror16, tail call"}
 {"rva": 90178928, "name": "sub_5600570", "role": "cookie_init", "status": "ported", "evidence": "fills the exception record, fastfail if present"}
 {"rva": 90179252, "name": "sub_56006b4", "role": "stack_walker", "status": "ported", "evidence": "RtlCaptureContext + two RtlVirtualUnwind"}

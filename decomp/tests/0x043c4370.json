@@ -1,0 +1,10 @@
+{
+  "rva": 71074672,
+  "note": "needs the GPU object, a job item and payloads; runs inside a worker",
+  "cases": [
+    {"args": ["ctx, a, 0"], "returns": "one pass begun and popped, b-side calls absent", "exe_run": false},
+    {"args": ["ctx, a, b"], "returns": "two passes, b-side unbind after commit", "exe_run": false}
+  ],
+  "exe_runs": 0,
+  "game_runs": 0
+}
