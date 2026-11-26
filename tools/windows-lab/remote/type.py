@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Send keystrokes to the lab VM through the QEMU monitor.
 
 Usage: type.py [-n] TEXT      (-n: do not press Enter at the end)

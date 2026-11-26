@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Replay oracle vectors through `revi call` and compare.
 
     tools/oracle/replay.py VECTORS.jsonl --exe game.exe [--revi revi] [--limit N]

@@ -1,0 +1,9 @@
+[project]
+name = "revi-tools"
+version = "0.0.0"
+description = "Decompilation tooling: oracle vectors, traps, gates"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false

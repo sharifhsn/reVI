@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Render the executable anatomy as an SVG. Pure stdlib."""
 import json, sys
 from html import escape

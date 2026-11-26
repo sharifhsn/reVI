@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Click at image coordinates in the lab VM's framebuffer.
 
 Usage: click.py X Y [--double]

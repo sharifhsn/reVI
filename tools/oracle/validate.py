@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Validate an oracle vector file against the schema and the image map.
 
     tools/oracle/validate.py VECTORS.jsonl [--map map.jsonl] [--exe-size N]

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Trigger a screendump in the VM.
 
 Usage: shot.py OUT.ppm

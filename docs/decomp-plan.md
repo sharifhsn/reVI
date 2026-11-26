@@ -118,3 +118,21 @@ comment, not a blocker.
 * Decompiling CRT and third-party middleware beyond identifying it.
 * Decompiling assets or script bytecode.
 * Chasing the renderer before the loader runs our code.
+
+## Long horizon
+
+Order of targets is fixed by what each one costs against the previous:
+
+1. Linux, native, D3D12 over vkd3d-proton — the only target with no new codegen.
+2. macOS — Rosetta for the x86-64 tree, MoltenVK on the same Vulkan layer; native
+   ARM64 only after Linux holds.
+3. iOS — ARM64 and Metal only, no Rosetta, hard memory ceiling, no RWX.
+4. Web — WGSL shaders (see `docs/shaders.md`) behind WebGPU, a wasm/WASI build of
+   the runtime, assembled at runtime where the sandbox forbids a whole-image JIT.
+5. **Rust rewrite, last.** C++ is the verification medium: it is what the pinned
+   MSVC toolchain can reproduce byte-for-byte against the original, which is how a
+   body earns `matching`. Once a subsystem is `linked`, nothing depends on that
+   property any more and it is a candidate for translation to safe Rust, one
+   subsystem per PR, with the C++ kept as the oracle until the Rust version passes
+   the same vectors. Starting the rewrite earlier means maintaining two targets
+   that can both drift.

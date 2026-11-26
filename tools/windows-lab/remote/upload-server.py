@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Tiny HTTP file channel between the guest and the host.
 
 GET  serves FILES_DIR (guest -> host downloads)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """Auto-merge bot for decomp PRs on the self-hosted Forgejo.
 
 Policy, from CONTRIBUTING.md: a PR that only adds files under `decomp/`,

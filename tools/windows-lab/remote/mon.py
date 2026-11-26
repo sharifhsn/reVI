@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
 """One monitor command, with output.
 
 Usage: mon.py "info usernet" [more commands...]
