@@ -1,0 +1,10 @@
+{
+  "rva": 71071392,
+  "note": "one-shot; needs thread creation and TLS up to observe the pool",
+  "cases": [
+    {"args": ["owner=0"], "returns": "5 threads created, names Subrender:00..04, 128 queue entries", "exe_run": false},
+    {"args": ["owner=0, second call"], "returns": "no-op, pool_up already set", "exe_run": false}
+  ],
+  "exe_runs": 0,
+  "game_runs": 0
+}
