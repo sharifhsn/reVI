@@ -106,3 +106,8 @@ python3 tools/anatomy.py <exe> /tmp/functions.csv /tmp/candidates.csv /tmp/anato
 
 The first two need the exe; the renderer needs `rsvg-convert` and takes the JSON
 only, so a contributor can regenerate the picture from numbers alone.
+
+![structure of the executable](img/exe-structure.png)
+
+Rendered by `tools/diagram-exe.py` (needs `/tmp/dlls.txt`, produced with
+`llvm-readobj --coff-imports | awk`).
