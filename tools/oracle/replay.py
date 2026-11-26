@@ -21,21 +21,39 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 RAX = re.compile(r"-> rax 0x([0-9a-f]+)")
 HEX = re.compile(r"^[0-9a-f]+$")
 
 
-def invoke(revi: str, exe: str, vec: dict, dumps: list[tuple[str, int]]) -> str:
+PAGE = 4096
+
+
+def superset(n: int) -> int:
+    return max(PAGE, (n + PAGE - 1) // PAGE * PAGE)
+
+
+def invoke(revi: str, exe: str, vec: dict, dumps: list[tuple[str, int]], mem: Path | None) -> str:
     args: list[str] = []
     if vec.get("argbuf"):
         args += ["--arg-buf", str(vec["argbuf"])]
     for a in vec["args"]:
         args += ["--arg", str(a)]
+    for f in vec.get("floats", []):
+        args += ["--f64", f]
+    for w in vec.get("words", []):
+        args += ["--u32", w]
     for span, ln in dumps:
         args += ["--dump", f"{span}:{ln}"]
-    env = {**os.environ, "REVI_STUBS": "1" if vec.get("stubs", True) else "0"}
+    if mem is not None:
+        args += ["--mem", str(mem)]
+    env = dict(os.environ)
+    if vec.get("stubs", True):
+        env["REVI_STUBS"] = "1"
+    else:
+        env.pop("REVI_STUBS", None)
     if vec.get("gs"):
         env["REVI_GS"] = "1"
     proc = subprocess.run([revi, "call", exe, hex(vec["rva"]), *args],
@@ -43,13 +61,23 @@ def invoke(revi: str, exe: str, vec: dict, dumps: list[tuple[str, int]]) -> str:
     return proc.stdout
 
 
+def write_mem(vec: dict) -> Path | None:
+    spans = vec.get("mem") or []
+    if not spans:
+        return None
+    f = Path(tempfile.mkstemp(prefix="vecmem-", suffix=".txt")[1])
+    f.write_text("".join(f"{s['span']} {s['bytes']}\n" for s in spans))
+    return f
+
+
 def hexlines(out: str) -> list[str]:
     return [l for l in out.splitlines() if l and HEX.match(l)]
 
 
 def replay_one(revi: str, exe: str, vec: dict) -> list[str]:
-    dumps = [(w["span"], w["len"]) for w in vec.get("writes", [])]
-    out = invoke(revi, exe, vec, dumps)
+    dumps = [(w["span"], w.get("superset") or superset(w["len"])) for w in vec.get("writes", [])]
+    mem = write_mem(vec)
+    out = invoke(revi, exe, vec, dumps, mem)
     if not out:
         return ["no output from revi call"]
 
@@ -74,8 +102,8 @@ def record(revi: str, exe: str, spec: dict) -> dict:
     dumps = []
     for sp in spec.get("dump", []):
         span, ln = sp.rsplit(":", 1)
-        dumps.append((span, int(ln)))
-    out = invoke(revi, exe, spec, dumps)
+        dumps.append((span, superset(int(ln))))
+    out = invoke(revi, exe, spec, dumps, write_mem(spec))
     m = RAX.search(out)
     vec = {
         "rva": spec["rva"],
@@ -89,10 +117,18 @@ def record(revi: str, exe: str, spec: dict) -> dict:
         vec["argbuf"] = spec["argbuf"]
     if spec.get("note"):
         vec["note"] = spec["note"]
+    declared = {}
+    for sp in spec.get("dump", []):
+        span, ln = sp.rsplit(":", 1)
+        declared[span] = int(ln)
     for (span, ln), line in zip(dumps, hexlines(out)):
         raw = bytes.fromhex(line)
-        vec["writes"].append({"span": span, "len": ln,
+        vec["writes"].append({"span": span, "len": declared.get(span, ln),
+                              "superset": ln,
                               "sha256": hashlib.sha256(raw).hexdigest()})
+    for k in ("mem", "floats", "words"):
+        if spec.get(k):
+            vec[k] = spec[k]
     return vec
 
 

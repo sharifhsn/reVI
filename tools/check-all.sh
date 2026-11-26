@@ -25,8 +25,18 @@ if ls tools/oracle/examples/*.jsonl >/dev/null 2>&1; then
     fi
 fi
 
+echo "== sabotage"
+if [ -x "$REVI" ] && [ -f "$EXE" ]; then
+    sh tools/oracle/sabotage.sh "$EXE" "$REVI" || rc=1
+fi
+
 echo "== compile"
-REVI_CC=${REVI_CC:-$HOME/srv/revi/bin/cc} tools/build-src.sh || rc=1
+REVI_CC=${REVI_CC:-$HOME/srv/revi/bin/cc} tools/build-src.sh --strict || rc=1
+
+echo "== swap"
+if [ -x "$REVI" ] && [ -f "$EXE" ] && [ -f target/src-obj/0x001117e0.obj ]; then
+    sh tools/oracle/swap.sh "$EXE" "$REVI" target/src-obj $((0x1117e0)) 22 16 2>/dev/null || rc=1
+fi
 
 echo
 [ "$rc" = 0 ] && echo "all gates green" || echo "gates failed"

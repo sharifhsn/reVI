@@ -96,7 +96,7 @@ def problems(vec: dict, index: int, extents: dict[int, int], image_size: int):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("vectors", type=Path)
+    ap.add_argument("vectors", nargs="+", type=Path)
     ap.add_argument("--map", type=Path, default=Path("/tmp/revimap.jsonl"))
     ap.add_argument("--exe-size", type=int, default=120_181_760)
     ns = ap.parse_args()
@@ -107,16 +107,19 @@ def main() -> int:
 
     bad = 0
     good = 0
-    for i, line in enumerate(ns.vectors.read_text().splitlines(), 1):
+    lines = []
+    for f in ns.vectors:
+        lines += [(f.name, i, l) for i, l in enumerate(f.read_text().splitlines(), 1)]
+    for fname, i, line in lines:
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         try:
             vec = json.loads(line)
         except json.JSONDecodeError as e:
-            print(f"line {i}: json: {e}")
+            print(f"{fname}:{i}: json: {e}")
             bad += 1
             continue
-        errs = list(problems(vec, i, extents, ns.exe_size))
+        errs = [f"{fname}:{e.split(": ",1)[-1]}" if not e.startswith("line") else e for e in problems(vec, i, extents, ns.exe_size)]
         if errs:
             bad += 1
             print("\n".join(errs))

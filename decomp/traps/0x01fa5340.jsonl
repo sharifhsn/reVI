@@ -1,0 +1,1 @@
+{"rva": 33182528, "kind": "call", "mode": "record", "note": "one indirect call through the global's slot 6, then true"}

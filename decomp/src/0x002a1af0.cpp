@@ -36,7 +36,7 @@ extern "C" void sub_347fd0(void **guard, rwlock *l);
 extern "C" void sub_2c59f0(void *guard);
 extern "C" rec *sub_358990(uint32_t tag, uint64_t id, unsigned a1, unsigned a2);
 
-static const float k_floor = 1.3592346e-15f;   /* 0x5fc6f0c */
+static const float k_floor = 0.99999994f;      /* 0x5fc6f0c, 1.0f - 1 ulp */
 
 bool sub_2a1af0(obj *o, unsigned a1, unsigned a2)
 {

@@ -1,0 +1,1 @@
+{"rva": 21654768, "build": "1.0.2.1", "args": [0, 7, 0, 65536], "returns": "0x0", "stubs": true, "writes": [{"span": "buf", "len": 12, "superset": 4096, "sha256": "eb3203c60da97554738baa40134665ae479ce96b83bac4913458b7d080e55334"}], "argbuf": 64, "note": "entry write: value 7, count 1, handle 0x1ffff"}

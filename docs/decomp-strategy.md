@@ -33,7 +33,7 @@
 One owner per gate, reviewer sign-off before the next gate starts. Each gate is
 timeboxed; missing the box triggers the named rollback rather than extension.
 
-### G0a — vector path correctness (3 days)
+### G0a — vector path correctness — DONE 2026-11-26
 
 - `revi call --obj <obj>`: after mapping and relocating, copy the object's `.text`
   over the extent (pad to size, `mprotect` RW then RX) and call the patched copy.
@@ -57,7 +57,7 @@ Gate: the three sabotage cases behave; a claim with no source fails the checker.
 
 Rollback: none needed, this is all local.
 
-### G0b — swap (5 days, stop-loss 1 day of measurement first)
+### G0b — swap — DONE 2026-11-26 (two reloc kinds, REL32/ADDR32NB)
 
 - `revi call --obj`: parse the object's COFF relocations, whitelist
   `REL32/ADDR32/ADDR32NB/SECREL/SECREL7`, resolve `sub_<rva>` and `__imp_<iat>`
@@ -123,3 +123,19 @@ in the slice are read against these records.
 
 bulk-draft; port unreached code; grind codegen on rotate/float bodies before the
 upstream fixes land; treat CRT, OS, GDK and third-party imports as one problem.
+
+## G0 results
+
+G0a: spans `buf|rva:|abs:` parsed once and resolved against the image base,
+repeatable `--dump`, page-superset hashes, `--mem` preloads, `--f64`/`--u32`
+forwarded (u32 is 4 bytes), `var_os` flags, replay hard-fails without an object,
+`sabotage.sh` as a committed negative test, checker requires `src`+`notes`+traps/
+tests for `ported`. Two hollow claims (0x1fa5340/0x1fa5480) were filled.
+
+G0b: `--obj` parses COFF relocations inline on `.text` (only REL32 and ADDR32NB
+occur across the 24 objects), resolves `sub_*`/`g_*`/`dat_*` even inside MSVC
+mangling, patches, and `swap.sh` proves it by corrupting the extent first.
+
+Swap immediately caught a real defect: `0x001117e0`'s source called `0x4f76200`,
+which is int3 padding, instead of `0x50879e0`. The original-only replay had passed
+because the vector skipped the call.

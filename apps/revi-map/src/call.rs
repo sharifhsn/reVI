@@ -16,8 +16,26 @@ use anyhow::{Result, bail};
 #[cfg(target_arch = "x86_64")]
 use {anyhow::Context, victory_pe::ImageInfo};
 
+/// Where a dump or preload points.
+pub enum Span {
+    /// The scratch argument buffer.
+    Buf,
+    /// Image-relative offset; resolved against the image base.
+    Rva(u64),
+    /// A host address.
+    Abs(u64),
+}
+
 #[cfg(not(target_arch = "x86_64"))]
-pub fn run(_exe: &Path, _rva: u32, _args: Vec<u64>, _dump: Option<(u64, usize)>, _buf: Option<(usize, Vec<(usize, f64)>)>) -> Result<()> {
+pub fn run(
+    _exe: &Path,
+    _rva: u32,
+    _args: Vec<u64>,
+    _dumps: Vec<(Span, usize)>,
+    _buf: Option<(usize, Vec<(usize, u64, u8)>)>,
+    _mem: Option<&Path>,
+    _obj: Option<&Path>,
+) -> Result<()> {
     bail!("revi call needs an x86-64 host; this is {}", std::env::consts::ARCH)
 }
 
@@ -27,8 +45,10 @@ pub fn run(
     exe: &Path,
     rva: u32,
     mut args: Vec<u64>,
-    dump: Option<(u64, usize)>,
-    buf: Option<(usize, Vec<(usize, f64)>)>,
+    dumps: Vec<(Span, usize)>,
+    buf: Option<(usize, Vec<(usize, u64, u8)>)>,
+    mem: Option<&Path>,
+    obj: Option<&Path>,
 ) -> Result<()> {
     let data = std::fs::read(exe).with_context(|| format!("reading {}", exe.display()))?;
     let info = ImageInfo::parse(&data)?;
@@ -91,23 +111,57 @@ pub fn run(
             bail!("buffer mmap failed");
         }
         unsafe { std::ptr::write_bytes(mem, 0, *len) };
-        for (off, value) in writes {
-            if off + 8 <= *len {
-                unsafe { std::ptr::write_unaligned(mem.add(*off).cast::<f64>(), *value) };
+        for (off, bits, width) in writes {
+            let dst = unsafe { mem.add(*off) };
+            match width {
+                4 if off + 4 <= *len => unsafe {
+                    std::ptr::write_unaligned(dst.cast::<u32>(), *bits as u32)
+                },
+                8 if off + 8 <= *len => unsafe {
+                    std::ptr::write_unaligned(dst.cast::<u64>(), *bits)
+                },
+                _ => {}
             }
         }
         args.insert(0, mem as u64);
         buf_ptr = mem as u64;
     }
 
+    let image_base = info.image_base;
+    let resolve = |sp: &Span| -> u64 {
+        match sp {
+            Span::Buf => buf_ptr,
+            Span::Rva(off) => image_base.wrapping_add(*off),
+            Span::Abs(a) => *a,
+        }
+    };
+
+    // Optional span preloads, one `span hexbytes` per line.
+    if let Some(path) = mem {
+        let text = std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+        for (i, line) in text.lines().enumerate() {
+            let line = line.split('#').next().unwrap_or("").trim();
+            if line.is_empty() {
+                continue;
+            }
+            let (span, bytes) = line.split_once(' ').with_context(|| format!("line {}", i + 1))?;
+            let sp = parse_span(span)?;
+            let at = resolve(&sp);
+            let raw = parse_hex_bytes(bytes.trim()).with_context(|| format!("line {}", i + 1))?;
+            if at != 0 {
+                unsafe { std::ptr::copy_nonoverlapping(raw.as_ptr(), at as *mut u8, raw.len()) };
+            }
+        }
+    }
+
     // Optional fake TEB for bodies that read gs:0x58 (thread index etc.).
-    if std::env::var("REVI_STUBS").is_ok() {
+    if std::env::var_os("REVI_STUBS").is_some() {
         IMAGE_BASE.store(info.image_base, std::sync::atomic::Ordering::Relaxed);
     }
     // Optional import stubs. Every slot gets a tiny trampoline that records
     // the call and returns 0 (or performs the one API whose effect matters).
     let mut symbols: Vec<(usize, String)> = Vec::new();
-    if std::env::var("REVI_STUBS").is_ok() {
+    if std::env::var_os("REVI_STUBS").is_some() {
         let page = unsafe { libc_mmap(std::ptr::null_mut(), 1 << 16, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
         if page as isize == -1 {
             bail!("stub mmap failed");
@@ -208,7 +262,7 @@ pub fn run(
         unsafe { libc_mprotect(page, 1 << 16, PROT_READ | PROT_EXEC) };
     }
 
-    if std::env::var("REVI_GS").is_ok() {
+    if std::env::var_os("REVI_GS").is_some() {
         let teb = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
         let block = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
         let obj = unsafe { libc_mmap(std::ptr::null_mut(), 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) };
@@ -242,6 +296,11 @@ pub fn run(
         bail!("stack mmap failed");
     }
     let top = stack as usize + stack_size - 64;
+
+    // Optional: patch our compiled body over the extent before calling it.
+    if let Some(obj) = obj {
+        patch_object(obj, mapped, base, rva as usize, &data, &info)?;
+    }
 
     let entry = unsafe { mapped.add(rva as usize) };
     let (rax, rdx, rcx_out): (u64, u64, u64);
@@ -296,10 +355,10 @@ pub fn run(
             r.clear();
         }
     }
-    if let Some((addr, len)) = dump {
-        let at = if addr == 0 { buf_ptr } else { addr };
+    for (sp, len) in &dumps {
+        let at = resolve(sp);
         if at != 0 {
-            let slice = unsafe { std::slice::from_raw_parts(at as *const u8, len) };
+            let slice = unsafe { std::slice::from_raw_parts(at as *const u8, *len) };
             println!("{}", hex(slice));
         }
     }
@@ -450,4 +509,182 @@ unsafe extern "C" {
     fn libc_mprotect(addr: *mut u8, len: usize, prot: i32) -> i32;
     #[link_name = "arch_prctl"]
     fn libc_arch_prctl(code: i32, addr: u64) -> i32;
+}
+
+fn parse_span(s: &str) -> Result<Span> {
+    if s == "buf" {
+        return Ok(Span::Buf);
+    }
+    if let Some(off) = s.strip_prefix("rva:") {
+        return Ok(Span::Rva(u64::from_str_radix(off.trim_start_matches("0x"), 16)?));
+    }
+    if let Some(a) = s.strip_prefix("abs:") {
+        return Ok(Span::Abs(u64::from_str_radix(a.trim_start_matches("0x"), 16)?));
+    }
+    Ok(Span::Abs(u64::from_str_radix(s.trim_start_matches("0x"), 16)?))
+}
+
+fn parse_hex_bytes(s: &str) -> Result<Vec<u8>> {
+    let s: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+    if s.len() % 2 != 0 {
+        bail!("odd hex length");
+    }
+    (0..s.len() / 2)
+        .map(|i| Ok(u8::from_str_radix(&s[i * 2..i * 2 + 2], 16)?))
+        .collect()
+}
+
+/// COFF relocation types we accept, and nothing else.
+const REL32: u16 = 0x0004;
+const ADDR32NB: u16 = 0x0003;
+const REL32_5: u16 = 0x0009;
+
+fn read_symbol_name(obj: &[u8], strtab_off: usize, off: usize) -> Result<String> {
+    let raw = obj.get(off..off + 8).context("symbol entry")?;
+    if raw[..4] == [0, 0, 0, 0] {
+        let so = u32::from_le_bytes(raw[4..8].try_into().expect("4")) as usize;
+        let at = strtab_off + so;
+        let end = obj[at..].iter().position(|b| *b == 0).context("unterminated name")?;
+        return Ok(String::from_utf8_lossy(&obj[at..at + end]).into_owned());
+    }
+    let end = raw.iter().position(|b| *b == 0).unwrap_or(8);
+    Ok(String::from_utf8_lossy(&raw[..end]).into_owned())
+}
+
+/// Resolve one object symbol to an absolute address.
+/// The trailing hex of a marker (`sub_140001000`), even inside an MSVC
+/// decoration such as `?sub_140001000@@YAEH@Z`.
+fn hex_after(name: &str, marker: &str) -> Option<usize> {
+    let at = name.find(marker)? + marker.len();
+    let hex: String = name[at..].chars().take_while(|c| c.is_ascii_hexdigit()).collect();
+    if hex.is_empty() {
+        return None;
+    }
+    usize::from_str_radix(&hex, 16).ok()
+}
+
+fn resolve_symbol(name: &str, base: usize, data: &[u8], info: &ImageInfo) -> Result<usize> {
+    if let Some(rva) = hex_after(name, "sub_") {
+        return Ok(base + rva);
+    }
+    if let Some(rva) = hex_after(name, "g_").or_else(|| hex_after(name, "dat_")) {
+        return Ok(base + rva);
+    }
+    if let Some(at) = name.find("__imp_") {
+        let imp: String = name[at + 6..]
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        let slot = import_slot(data, info, &imp).with_context(|| format!("import {imp}"))?;
+        return Ok(base + slot);
+    }
+    bail!("object symbol {name} has no image counterpart")
+}
+
+/// Find the IAT RVA for an import by name.
+fn import_slot(data: &[u8], info: &ImageInfo, want: &str) -> Result<usize> {
+    let _ = info;
+    let pe = u32::from_le_bytes(data.get(0x3c..0x40).context("e_lfanew")?.try_into().expect("4")) as usize;
+    let opt = pe + 24;
+    let dir = opt + 120;
+    let imp = u32::from_le_bytes(data.get(dir..dir + 4).context("import dir")?.try_into().expect("4")) as usize;
+    let mut at = imp;
+    loop {
+        let rec = data.get(at..at + 20).context("import record")?;
+        let name = u32::from_le_bytes(rec[12..16].try_into().expect("4")) as usize;
+        let iat = u32::from_le_bytes(rec[16..20].try_into().expect("4")) as usize;
+        if name == 0 {
+            break;
+        }
+        // names here are stored as RVAs with a 2-byte hint prefix in the thunk
+        let mut t = u32::from_le_bytes(rec[0..4].try_into().expect("4")) as usize;
+        if t == 0 {
+            t = iat;
+        }
+        for i in 0..4096 {
+            let v = u64::from_le_bytes(data[t + i * 8..t + i * 8 + 8].try_into().expect("8"));
+            if v == 0 {
+                break;
+            }
+            if v >> 63 == 0 {
+                let n = v as usize + 2;
+                let end = data[n..].iter().position(|b| *b == 0).unwrap_or(0);
+                if &data[n..n + end] == want.as_bytes() {
+                    return Ok(iat + i * 8);
+                }
+            }
+        }
+        at += 20;
+    }
+    bail!("import {want} not found")
+}
+
+/// Copy the object's `.text` over the extent and apply its relocations.
+fn patch_object(
+    obj_path: &Path,
+    mapped: *mut u8,
+    base: usize,
+    rva: usize,
+    data: &[u8],
+    info: &ImageInfo,
+) -> Result<()> {
+    let obj = std::fs::read(obj_path).with_context(|| format!("reading {}", obj_path.display()))?;
+    let nsec = u16::from_le_bytes(obj[2..4].try_into().expect("2")) as usize;
+    let sym_ptr = u32::from_le_bytes(obj[8..12].try_into().expect("4")) as usize;
+    let nsyms = u32::from_le_bytes(obj[12..16].try_into().expect("4")) as usize;
+    let strtab = sym_ptr + nsyms * 18;
+
+    // COFF keeps a section's relocations inline: the `.text` header's
+    // PointerToRelocations / NumberOfRelocations, not a separate `.reloc`.
+    let mut text: Option<(usize, usize)> = None;
+    let mut reloc: Option<(usize, usize)> = None;
+    for i in 0..nsec {
+        let at = 20 + 40 * i;
+        let name = &obj[at..at + 8];
+        let raw_size = u32::from_le_bytes(obj[at + 16..at + 20].try_into().expect("4")) as usize;
+        let raw_ptr = u32::from_le_bytes(obj[at + 20..at + 24].try_into().expect("4")) as usize;
+        let rel_ptr = u32::from_le_bytes(obj[at + 24..at + 28].try_into().expect("4")) as usize;
+        let rel_n = u16::from_le_bytes(obj[at + 32..at + 34].try_into().expect("2")) as usize;
+        if name.starts_with(b".text") {
+            text = Some((raw_ptr, raw_size));
+            if rel_n > 0 {
+                reloc = Some((rel_ptr, rel_n * 10));
+            }
+        } else if name.starts_with(b".reloc") && rel_n == 0 {
+            reloc = Some((raw_ptr, raw_size));
+        }
+    }
+    let (tptr, tlen) = text.context("object has no .text")?;
+    if tlen > 0x20000 {
+        bail!("object .text is {tlen} bytes, extent is not that big");
+    }
+
+    unsafe { libc_mprotect(mapped, 1 << 24, PROT_READ | PROT_WRITE | PROT_EXEC) };
+    unsafe { std::ptr::copy_nonoverlapping(obj[tptr..tptr + tlen].as_ptr(), mapped.add(rva), tlen) };
+
+    if let Some((rptr, rlen)) = reloc {
+        let mut at = 0usize;
+        while at + 10 <= rlen {
+            let off = u32::from_le_bytes(obj[rptr + at..rptr + at + 4].try_into().expect("4")) as usize;
+            let sym = u32::from_le_bytes(obj[rptr + at + 4..rptr + at + 8].try_into().expect("4")) as usize;
+            let kind = u16::from_le_bytes(obj[rptr + at + 8..rptr + at + 10].try_into().expect("2"));
+            at += 10;
+            let name = read_symbol_name(&obj, strtab, sym_ptr + sym * 18)?;
+            let target = resolve_symbol(&name, base, data, info)?;
+            let site = mapped as usize + rva + off;
+            match kind {
+                ADDR32NB => {
+                    let v = (target - base) as u32;
+                    unsafe { std::ptr::write_unaligned(site as *mut u32, v) };
+                }
+                REL32..=REL32_5 => {
+                    let extra = (kind - REL32) as isize;
+                    let delta = target as isize - (site as isize + 4) - extra;
+                    unsafe { std::ptr::write_unaligned(site as *mut i32, delta as i32) };
+                }
+                other => bail!("unsupported relocation type {other:#x} for {name}"),
+            }
+        }
+    }
+    Ok(())
 }

@@ -119,6 +119,24 @@ pub fn run(map: &Path, decomp: &Path) -> Result<()> {
         }
     }
 
+    // A body is only `ported` or beyond when it actually carries the artifacts.
+    for (rva, claim) in &claims {
+        if claim.status != "ported" && claim.status != "matching" && claim.status != "linked" {
+            continue;
+        }
+        for suffix in ["cpp", "md"] {
+            let f = decomp.join(if suffix == "cpp" { "src" } else { "notes" })
+                .join(format!("0x{rva:08x}.{suffix}"));
+            if !f.exists() {
+                problems.push(format!("0x{rva:08x}: status {:?} but no {}", claim.status, f.display()));
+            }
+        }
+        let traps = decomp.join("traps").join(format!("0x{rva:08x}.jsonl"));
+        if !traps.exists() && !decomp.join("tests").join(format!("0x{rva:08x}.json")).exists() {
+            problems.push(format!("0x{rva:08x}: status {:?} but no traps or tests", claim.status));
+        }
+    }
+
     let matching = claims.values().filter(|c| c.status == "matching").count();
     let ported = claims.values().filter(|c| c.status == "ported").count();
     println!("map extents    {}", extents.len());
