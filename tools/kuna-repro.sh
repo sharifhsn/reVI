@@ -8,7 +8,7 @@ D() { $K decompile "$E" "$1" --addr --sleighpath "$S" 2>&1; }
 
 echo "== 1968 rotate + returned value"
 o=$(D 0x1455ea040)
-if grep -q "ror\|rol" <<<"$o" || grep -qE "^[a-z].*sub_1455ea040" <<<"$o"; then
+if grep -qE "ror|rol" <<<"$o"; then
     grep -qE "^void" <<<"$o" && echo "1968 PARTIAL: rotate present, still void" || echo "1968 PASS"
 else
     echo "1968 FAIL"; echo "$o" | head -5 | sed 's/^/   /'
