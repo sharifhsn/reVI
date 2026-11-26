@@ -104,3 +104,15 @@ check. It never closes an issue.
 Fixes are accepted only when the verdict flips and the regression block stays
 green; then the issue gets a comment with the new output and the weak-spot list
 above is pruned.
+
+## Delegated work
+
+These are generic (fixture-gated, no title knowledge) and are filed for an agent:
+upstream 1997 (`fid`/`flirt` recipe, annotation, measured false positives), 1998
+(mutate-to-match loop), 1999 (x64 SEH reconstruction), plus the scoped
+implementation comments on 1970 (vftable seeding) and 1972 (twin detector).
+Runtime-side and in this repo: Forgejo #4, the PE loader shim.
+
+`tools/kuna-monitor.sh` watches fork branches and issue comments, checks a new
+branch out into a throwaway worktree, builds it with the shared target dir, and
+runs the verdict script. It never merges.

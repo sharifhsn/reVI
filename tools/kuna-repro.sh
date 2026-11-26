@@ -1,9 +1,9 @@
 #!/bin/bash
 # Re-run every repro we have filed upstream and print one verdict per issue.
 # Exits 0 always; the verdicts are the output.
-K=$HOME/kuna-fork/decompiler/target/release/kuna
-E=$HOME/leonida/drop/exe/game_scarlett_master.exe
-S=$HOME/kuna-specs/specs
+K=${K:-$HOME/kuna-fork/decompiler/target/release/kuna}
+E=${E:-$HOME/leonida/drop/exe/game_scarlett_master.exe}
+S=${S:-$HOME/kuna-specs/specs}
 D() { $K decompile "$E" "$1" --addr --sleighpath "$S" 2>&1; }
 
 echo "== 1968 rotate + returned value"
