@@ -6,11 +6,11 @@
 struct item;
 
 struct slot_rec {
-    void *handle;      /* +0x00 */
-    void *pad;         /* +0x08 */
-    void *arg_b;       /* +0x18 */
-    void *obj;         /* +0x20 */
-    /* ... */
+    void *handle;      /* +0x00, wait handle */
+    void *obj;         /* +0x08, released on exit */
+    void *gap[2];      /* +0x10 */
+    void *arg_a;       /* +0x20 */
+    void *arg_b;       /* +0x28 */
     uint32_t flags;    /* +0x30 */
 };
 
@@ -35,7 +35,7 @@ void sub_43c4140(unsigned slot)
         item *it = nullptr; /* ring pop from 0x149c3ba30 */
         if (!it)
             break;
-        sub_1443c4370(it, rec()[slot].arg_b, rec()[slot].obj);
+        sub_1443c4370(it, rec()[slot].arg_a, rec()[slot].arg_b);
         sub_140005930(*(void **)&((void **)it)[3]);
     }
     sub_140005930(rec()[slot].obj);
