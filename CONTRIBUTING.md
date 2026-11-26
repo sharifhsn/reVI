@@ -14,11 +14,16 @@ One function per pull request is normal and welcome. The unit of work is one
 RVA, so nobody edits a shared file and PRs never conflict.
 
 ```sh
-revi claim decomp/map/functions.csv decomp 0x056a1ec8 --owner yourhandle
-# write decomp/notes/0x056a1ec8.md, decomp/src/0x056a1ec8.c, decomp/tests/0x056a1ec8.json
-revi check decomp/map/functions.csv decomp
+revi claim /tmp/revimap.jsonl decomp 0x056a1ec8 --owner yourhandle
+# write decomp/notes/0x056a1ec8.md, decomp/src/0x056a1ec8.cpp,
+#       decomp/tests/0x056a1ec8.json, decomp/traps/0x056a1ec8.jsonl
+MAP=/tmp/revimap.jsonl EXE=$HOME/leonida/drop/exe/game_scarlett_master.exe tools/check-all.sh
 git add decomp && git commit -m "decomp: 0x056a1ec8 <what it does>"
 ```
+
+`tools/check-all.sh` runs, in order: the structural checker, trap validation,
+vector validation and replay, then a compile of every body. A body that does not
+compile alone is not done.
 
 Rules the bot enforces, and a human does not have to:
 
