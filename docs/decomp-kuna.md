@@ -93,3 +93,14 @@ verified on this image.
 `kuna install-skill --dir ~/.agents/skills` is already installed on `aster`.
 Put the binary on `PATH` (`~/srv/revi/bin/kuna`) before a session that will use
 it, or the skill's own examples fail.
+
+## Fix loop
+
+`tools/kuna-watch.sh [minutes]` watches `sharifhsn/kuna` main; when it moves it
+rebuilds on aster and runs `tools/kuna-repro.sh`, which prints a PASS/PARTIAL/FAIL
+verdict per open issue (1968, 1969, 1970, 1972) plus an export/query regression
+check. It never closes an issue.
+
+Fixes are accepted only when the verdict flips and the regression block stays
+green; then the issue gets a comment with the new output and the weak-spot list
+above is pruned.
