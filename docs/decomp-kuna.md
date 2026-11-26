@@ -107,13 +107,15 @@ above is pruned.
 
 ## Delegated work
 
-These are generic (fixture-gated, no title knowledge) and are filed for an agent:
-upstream 1997 (`fid`/`flirt` recipe, annotation, measured false positives), 1998
-(mutate-to-match loop), 1999 (x64 SEH reconstruction), plus the scoped
-implementation comments on 1970 (vftable seeding) and 1972 (twin detector).
-The PE loader shim is public too (2000). Rule: generic decompilation, harness
-and runtime work goes on the public GitHub tracker; only title-specific claims,
-notes and evidence stay on Forgejo.
+All generic work is filed on **our fork's tracker** (`sharifhsn/kuna`, fork
+issues enabled): 1 `fid`/`flirt`, 2 mutate-to-match, 3 x64 SEH, 4 PE loader shim,
+5 vftable seeding without RTTI, 6 outlining detector. The five decompiler bugs
+and the export bug are mirrored there as 7..11.
+
+Rule: our tracker is the fork; upstream stays the merge base for code and is
+where fixes ultimately land. Only title-specific claims, notes and evidence stay
+on Forgejo. Mirrored issues carry a "Mirrored from" line so an upstream reader is
+not misled.
 
 `tools/kuna-monitor.sh` watches fork branches and issue comments, checks a new
 branch out into a throwaway worktree, builds it with the shared target dir, and

@@ -9,13 +9,13 @@
 # reviewer can act on them.
 set -u
 FORK=sharifhsn/kuna
-ISSUES="1968 1969 1970 1971 1972 1978 1997 1998 1999"
+ISSUES="1 2 3 4 5 6 7 8 9 10 11"
 MIN=${1:-120}
 HOST=${HOST:-aster}
 KNOWN=$(timeout 40 ssh "$HOST" "git -C ~/kuna-fork ls-remote https://github.com/$FORK 'refs/heads/*'" 2>/dev/null | cut -f2 | sed 's#refs/heads/##' | sort)
 echo "baseline: $(echo "$KNOWN" | wc -l) branches"
 for n in $ISSUES; do
-    c=$(gh issue view "$n" -R Noelo-Lab/kuna --json comments --jq '.comments|length' 2>/dev/null || echo 0)
+    c=$(gh issue view "$n" -R "$FORK" --json comments --jq '.comments|length' 2>/dev/null || echo 0)
     echo "$n:$c"
 done > /tmp/kuna-seen-counts
 
@@ -25,11 +25,11 @@ while [ "$i" -lt "$MIN" ]; do
     i=$((i + 2))
 
     for n in $ISSUES; do
-        c=$(gh issue view "$n" -R Noelo-Lab/kuna --json comments --jq '.comments|length' 2>/dev/null || echo 0)
+        c=$(gh issue view "$n" -R "$FORK" --json comments --jq '.comments|length' 2>/dev/null || echo 0)
         was=$(grep "^$n:" /tmp/kuna-seen-counts | cut -d: -f2)
         if [ -n "$was" ] && [ "$c" -gt "$was" ] 2>/dev/null; then
             echo "$(date +%H:%M) issue $n: comment $was -> $c"
-            gh issue view "$n" -R Noelo-Lab/kuna --json comments --jq ".comments[$was:]|.[]|.author.login+\": \"+(.body[0:200]|gsub(\"\n\";\" \"))" 2>/dev/null | sed 's/^/    /'
+            gh issue view "$n" -R "$FORK" --json comments --jq ".comments[$was:]|.[]|.author.login+\": \"+(.body[0:200]|gsub(\"\n\";\" \"))" 2>/dev/null | sed 's/^/    /'
         fi
         sed -i.bak "s/^$n:.*/$n:$c/" /tmp/kuna-seen-counts 2>/dev/null || true
     done
