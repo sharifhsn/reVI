@@ -1,0 +1,4 @@
+{"rva": 1120224, "build": "1.0.2.1", "args": [22, 16], "returns": "0x0", "stubs": true, "writes": [], "note": "family byte 0x16 returns 0 without calling"}
+{"rva": 1120224, "build": "1.0.2.1", "args": [23, 4096], "returns": "0x4030200", "stubs": true, "writes": [], "note": "other family byte: call is made; the recording stub returns 0x04030200, so low byte is 0"}
+{"rva": 354800, "build": "1.0.2.1", "args": [35651584, 3], "returns": "0x0", "stubs": true, "writes": [], "note": "counted wait 3: three stub calls"}
+{"rva": 354800, "build": "1.0.2.1", "args": [35651584, 1], "returns": "0x0", "stubs": true, "writes": [], "note": "counted wait 1"}

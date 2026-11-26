@@ -21,7 +21,8 @@ extern "C" void sub_1402a1be0(void *sem, unsigned n);   /* counted wait */
 extern "C" void sub_1443c4370(item *it, void *b, void *a);
 extern "C" void sub_140005930(void *p);
 
-static slot_rec *rec(void);
+static slot_rec *const g_pool = (slot_rec *)0x149c3d678;
+#define rec() (g_pool)
 
 void sub_43c4140(unsigned slot)
 {

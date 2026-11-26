@@ -1,0 +1,2 @@
+{"rva": 1120224, "kind": "entry", "mode": "trap", "note": "family byte 0x16 must return before the call; proved by exe vector"}
+{"rva": 1120224, "kind": "call", "mode": "record", "note": "other family bytes call 0x450879e0 with (a1); record its arguments"}

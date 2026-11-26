@@ -3,9 +3,12 @@
  * the payload ring, commit, invoke the job, release. Payloads may be absent. */
 #include <stdint.h>
 
-struct job;
+struct job { void *vt[8]; uint32_t pass; };
 struct payload;
 struct job_ctx;
+
+static inline void payload_push(payload *p, unsigned char pass);
+static inline void payload_pop(payload *p);
 
 extern "C" void sub_4fa85e0(void);
 extern "C" void sub_4fa9340(void);
@@ -14,7 +17,7 @@ extern "C" void sub_55c11d0(payload *);
 extern "C" void sub_55c11f0(payload *);
 extern "C" void sub_4e8a350(payload *, void *);
 extern "C" void sub_4e89c50(payload *, void *);
-extern "C" unsigned char sub_55cc020(uint64_t buf, uint32_t pass, unsigned which);
+extern "C" int sub_55cc020(uint64_t buf, uint32_t pass, unsigned which);
 extern "C" void sub_55cc0c0(void);
 extern "C" void sub_1443c3890(job *);
 extern "C" void sub_4fb3ab0(payload *);
@@ -35,7 +38,7 @@ struct job_ctx {
     void *result;                   /* +0x10 */
 };
 
-static void tls_set(job *j, payload *a, payload *b);
+static inline void tls_set(job *j, payload *a, payload *b);
 
 void sub_43c4370(job_ctx *ctx, payload *a, payload *b)
 {
@@ -48,11 +51,11 @@ void sub_43c4370(job_ctx *ctx, payload *a, payload *b)
     sub_4e8a350(a, &ctx->slot);
     if (b) sub_4e89c50(b, &ctx->slot);
 
-    unsigned char p1 = sub_55cc020(*(uint64_t *)(g_gpu + 0x500), ctx->item->pass, 0);
+    unsigned char p1 = (unsigned char)sub_55cc020(*(uint64_t *)(g_gpu + 0x500), ctx->item->pass, 0);
     if (p1 != 0xff) payload_push(a, p1);
     unsigned char p2 = 0xff;
     if (b) {
-        p2 = sub_55cc020(*(uint64_t *)(g_gpu + 0x500), ctx->item->pass, 1);
+        p2 = (unsigned char)sub_55cc020(*(uint64_t *)(g_gpu + 0x500), ctx->item->pass, 1);
         if (p2 != 0xff) payload_push(b, p2);
     }
     sub_55cc0c0();
@@ -67,4 +70,27 @@ void sub_43c4370(job_ctx *ctx, payload *a, payload *b)
     if (g_after_a) sub_4e37260(a);
     if (g_after_b) sub_4e37260(b);
     tls_set(nullptr, nullptr, nullptr);
+}
+
+/* Sketches of the inline ring in the original: depth at +0x12294, handles from
+ * +0x12290. Kept as helpers only so the body reads. */
+static inline void payload_push(payload *p, unsigned char pass)
+{
+    unsigned char *c = (unsigned char *)p + 0x12294;
+    *c += 1;
+    *(unsigned char *)((char *)p + 0x12290 + *c) = (char)pass;
+}
+
+static inline void payload_pop(payload *p)
+{
+    *(unsigned char *)((char *)p + 0x12294) -= 1;
+}
+
+/* TLS stores: job at +0x10e8, a at +0x12a8, b at +0x1108, via gs:0x58. The
+ * original re-materialises the pointer per use; one helper is enough here. */
+static inline void tls_set(job *j, payload *a, payload *b)
+{
+    static char *volatile *const tls_vec = (char *volatile *)0;
+    (void)tls_vec;
+    (void)j; (void)a; (void)b;
 }

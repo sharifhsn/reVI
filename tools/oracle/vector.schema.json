@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://revi.local/oracle-vector.schema.json",
+  "title": "oracle vector",
+  "description": "One recorded execution of a function, replayable anywhere. JSONL: one object per line.",
+  "type": "object",
+  "required": ["rva", "build", "args", "returns"],
+  "additionalProperties": false,
+  "properties": {
+    "rva": {
+      "type": "integer",
+      "minimum": 4096,
+      "description": "Function RVA. Canonical form; never a VA."
+    },
+    "build": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Game build the vector was recorded on."
+    },
+    "args": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "rcx, rdx, r8, r9, then stack, as absolute values. Buffers passed in an arg are described by a matching 'mem' entry."
+    },
+    "argbuf": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Size of a zeroed scratch buffer passed as arg1. Exactly one buffer per vector."
+    },
+    "mem": {
+      "type": "array",
+      "maxItems": 16,
+      "description": "Spans to preload before the call.",
+      "items": {
+        "type": "object",
+        "required": ["span", "bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "span": {
+            "type": "string",
+            "pattern": "^(rva|abs):0x[0-9a-f]+$",
+            "description": "rva: inside the image (normalised), abs: a fixed host address (heap/stack scratch)."
+          },
+          "bytes": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]+={0,2}$",
+            "description": "Base64 of the span. Image bytes are allowed here; that is the one exemption."
+          }
+        }
+      }
+    },
+    "returns": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{1,16}$",
+      "description": "Expected rax after the call. Use the retn convention of the build; xmm results use xmm0."
+    },
+    "writes": {
+      "type": "array",
+      "maxItems": 16,
+      "description": "Ranges the call must write, hashed. Contents are never stored, only the hash.",
+      "items": {
+        "type": "object",
+        "required": ["span", "len", "sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "span": { "type": "string", "pattern": "^(rva|abs):0x[0-9a-f]+$" },
+          "len": { "type": "integer", "minimum": 1, "maximum": 4096 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "caller_rva": {
+      "type": "integer",
+      "minimum": 4096,
+      "description": "Where the vector was caught, if recorded from a live caller."
+    },
+    "frame": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Call depth at the record, for grouping."
+    },
+    "stubs": {
+      "type": "boolean",
+      "default": true,
+      "description": "Recorded with REVI_STUBS=1 (imports return 0 and are logged)."
+    },
+    "gs": {
+      "type": "boolean",
+      "default": false,
+      "description": "Recorded with a fabricated TEB (REVI_GS=1)."
+    },
+    "note": { "type": "string", "maxLength": 400 }
+  }
+}

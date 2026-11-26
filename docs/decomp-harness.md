@@ -76,3 +76,20 @@ the loader harness:
 That is the harness's import, TEB and unwind halves minus the real APIs and the
 live title. What remains is trapping inside the running game and replaying
 vectors against it.
+
+## Implemented (2026-11-26)
+
+The data path is built and green while the loader is not:
+
+* `tools/oracle/vector.schema.json` — vector schema (RVA canonical, hashes for
+  writes, `rva:`/`abs:` spans).
+* `tools/oracle/validate.py` — the rules a schema cannot state: extent must be
+  real, spans inside the image, blob caps, argument/`argbuf` consistency.
+* `tools/oracle/replay.py` — record and replay through `revi call`, comparing rax
+  and every declared write hash; `--record` re-baselines deliberately.
+* `tools/oracle/traps.py` — trap-list validation (`decomp/traps/0x<rva>.jsonl`).
+* `tools/build-src.sh` — compiles every body alone under the pinned wrapper.
+* `tools/check-all.sh` — all gates in order.
+
+Vectors are limited by `revi call` until the loader hooks land: leaf bodies with
+arguments and preloaded spans only.
