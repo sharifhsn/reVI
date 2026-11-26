@@ -1,0 +1,10 @@
+{
+  "rva": 71074048,
+  "note": "thread body; needs the pool's records, queue and TLS to be meaningful",
+  "cases": [
+    {"args": ["slot=0"], "returns": "returns at once when record flags bit0 is clear", "exe_run": false},
+    {"args": ["slot=0, flags=1, empty queue"], "returns": "one wait, then exit and release the slot object", "exe_run": false}
+  ],
+  "exe_runs": 0,
+  "game_runs": 0
+}
