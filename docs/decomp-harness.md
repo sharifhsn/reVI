@@ -93,3 +93,12 @@ The data path is built and green while the loader is not:
 
 Vectors are limited by `revi call` until the loader hooks land: leaf bodies with
 arguments and preloaded spans only.
+
+## Stateful stub returns (2026-11-27)
+
+`REVI_STUB_RET=Symbol=0x<hex>,…` gives a chosen import a fixed return instead of
+0, and vectors carry it as `stub_ret`. That is enough to walk a success path that
+only needs a non-null handle: `0x01662430` now returns a handle and
+`0x05cabc40` writes five of them into `g_slots`, both recorded as vectors.
+Semaphores still do not block — waits return immediately — so the *ordering* of
+the pool is not yet exercised, only its stores.

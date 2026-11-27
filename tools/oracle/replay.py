@@ -56,6 +56,8 @@ def invoke(revi: str, exe: str, vec: dict, dumps: list[tuple[str, int]], mem: Pa
         env.pop("REVI_STUBS", None)
     if vec.get("gs"):
         env["REVI_GS"] = "1"
+    if vec.get("stub_ret"):
+        env["REVI_STUB_RET"] = ",".join(f"{k}={v}" for k, v in vec["stub_ret"].items())
     proc = subprocess.run([revi, "call", exe, hex(vec["rva"]), *args],
                           capture_output=True, text=True, env=env, timeout=180)
     return proc.stdout

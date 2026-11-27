@@ -1,0 +1,2 @@
+{"rva": 23471152, "build": "1.0.2.1", "args": [0], "returns": "0x100", "stubs": true, "writes": [], "note": "factory: one create, returns the handle the stub gave"}
+{"rva": 97172544, "build": "1.0.2.1", "args": [], "returns": "0x100", "stubs": true, "writes": [{"span": "rva:0x75defc0", "len": 40, "superset": 4096, "sha256": "a6420ec0b2fe4acf17499cfac86f632b625c2e6519565e91ceec01a537c0ef00"}], "note": "slot filler: five stores of selector 0 -> five 0x100 handles"}

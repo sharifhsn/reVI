@@ -60,6 +60,11 @@
       "items": { "type": "string", "pattern": "^[0-9a-f]+:[0-9a-f]{1,8}$" },
       "description": "`offset:value` u32 writes into the argbuf (4 bytes)."
     },
+    "stub_ret": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^0x[0-9a-f]+$" },
+      "description": "Per-import return values, e.g. {\"CreateSemaphoreExW\": \"0x100\"}."
+    },
     "returns": {
       "type": "string",
       "pattern": "^0x[0-9a-f]{1,16}$",
