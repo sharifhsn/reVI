@@ -2,6 +2,7 @@
  * stores, not separate functions. Runs one render job: install it in TLS, begin the GPU pass(es), record them in
  * the payload ring, commit, invoke the job, release. Payloads may be absent. */
 #include <stdint.h>
+#include <intrin.h>
 
 struct job { void *vt[8]; uint32_t pass; };
 struct payload;
@@ -88,9 +89,15 @@ static inline void payload_pop(payload *p)
 
 /* TLS stores: job at +0x10e8, a at +0x12a8, b at +0x1108, via gs:0x58. The
  * original re-materialises the pointer per use; one helper is enough here. */
+static inline char *tls_vec(void)
+{
+    return (char *)__readgsqword(0x58);
+}
+
 static inline void tls_set(job *j, payload *a, payload *b)
 {
-    static char *volatile *const tls_vec = (char *volatile *)0;
-    (void)tls_vec;
-    (void)j; (void)a; (void)b;
+    char *t = tls_vec();
+    *(job **)(t + 0x10e8) = j;
+    *(payload **)(t + 0x12a8) = a;
+    *(payload **)(t + 0x1108) = b;
 }

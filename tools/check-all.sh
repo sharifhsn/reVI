@@ -13,6 +13,9 @@ rc=0
 echo "== claims, notes, src, tests"
 "$REVI" check "$MAP" decomp || rc=1
 
+echo "== audit"
+python3 tools/audit-src.py --map "$MAP" || rc=1
+
 echo "== traps"
 python3 tools/oracle/traps.py --map "$MAP" decomp/traps/*.jsonl || rc=1
 

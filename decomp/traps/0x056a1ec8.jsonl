@@ -1,0 +1,1 @@
+{"rva": 90840776, "kind": "call", "mode": "record", "note": "first call is the allocator init; the tail jump returns to the loader"}

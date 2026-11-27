@@ -22,6 +22,9 @@ extern "C" void *sub_144fc21d0(void *name, unsigned flags);
 extern "C" void *sub_141ad0fd0(void (*start)(unsigned), unsigned param, unsigned stack,
                               unsigned flags, unsigned prio, void *ctx, unsigned detached);
 extern "C" void sub_43c4140(unsigned slot);
+extern "C" bool sub_1443c30b0(void);
+extern "C" bool sub_145832830(void);
+extern "C" void sub_141d08850(void *owner);
 
 static bool pool_up;
 static slot_rec pool[5];         /* 0x149c3d670 */
@@ -51,5 +54,6 @@ void sub_43c38a0(void *owner)
             *(void **)((char *)0x149c3be60 + off) = sub_1419ecd00();
         pool_up = true;
     }
-    (void)owner;
+    if (!sub_1443c30b0() && sub_145832830())
+        sub_141d08850(owner);
 }

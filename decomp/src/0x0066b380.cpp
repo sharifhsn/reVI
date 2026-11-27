@@ -13,11 +13,11 @@ struct owner {
 
 struct child_field;
 
-extern "C" child_field *sub_1530dc70(child *c);            /* c->field_0x10 */
+extern "C" child_field *sub_530dc70(child *c);            /* c->field_0x10 */
 extern "C" void sub_b844a0(void *obj, unsigned char state); /* state setter */
 
 void sub_66b380(owner *o)
 {
-    sub_b844a0(sub_1530dc70(o->child_0x30), 0);
+    sub_b844a0(sub_530dc70(o->child_0x30), 0);
     o->flag_0x41 = false;
 }

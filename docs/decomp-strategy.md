@@ -75,7 +75,7 @@ Rollback: if more than six reloc kinds appear, or resolution needs more than a
 symbol table, abandon per-object swap and build a real link step
 (`revi link` → stub lib → `--raw` image), keeping swap only for leaves.
 
-### G1 — audit the 24 (4 days)
+### G1 — audit the 24 — DONE 2026-11-26
 
 Re-read every claim for the three defects. Fill or demote (`ported` → `claimed`)
 `0x056a1ec8`, `0x043c4140`, `0x043c38a0`, and any note whose source is shorter than
@@ -139,3 +139,20 @@ mangling, patches, and `swap.sh` proves it by corrupting the extent first.
 Swap immediately caught a real defect: `0x001117e0`'s source called `0x4f76200`,
 which is int3 padding, instead of `0x50879e0`. The original-only replay had passed
 because the vector skipped the call.
+
+## G1 results
+
+`tools/audit-src.py` is now a gate (`check-all` step 2). It flags an empty body,
+`(void)x` swallows, placeholder markers, a call target that is unmapped or lands
+on `int3` padding, and a note shorter than half its source.
+
+It found and we fixed: `0x056a1ec8` was `void entry(void) {}` (now the real call
+plus tail jump), `0x043c38a0` dropped its whole tail behind `(void)owner` (now
+calls the two predicates and passes the owner), `0x043c4370`'s TLS stores were
+`(void)` casts (now `__readgsqword(0x58)` writes), `0x05600570` wrote the cookie
+pair into a dead local (now into the record's info slots), and `0x0066b380`
+called `0x1530dc70`, which is not an address (now `0x530dc70`).
+
+The bug class that motivated the audit is the padding target: `0x001117e0`
+called `0x4f76200`, pure `int3`, and passed every original-only replay because
+the vector skipped the call.
