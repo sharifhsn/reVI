@@ -95,7 +95,12 @@ Gate: pointer edges move the reachable set by more than 10% and the added hot
 bodies enter the queue; callerless is published with its caveat. Rollback: if the
 move is under 10%, freeze the graph and proceed — do not gold-plate.
 
-### G3 — loader and first real run (3 weeks)
+### G3a — loader against a CRT-only fixture (1 day, local)
+
+Map, relocate, TLS, table stubs and a real `__security_init_cookie` on a small
+MSVC binary; no game bytes, so the download cannot block it.
+
+### G3b — loader and first real run (3 weeks, needs the package verified)
 
 The PE-under-ELF loader (fork issue 4): map, relocate, TLS, table-driven import
 stubs, entry with a stop condition. Trap list from G2's hot set. First trace.
@@ -173,3 +178,18 @@ ranking, where a `ptr_refs` column matters more than reachability.
 
 Indirect *call sites* (`call [reg+off]`) remain unresolved and are the real
 outstanding item; they need the vtables, not a reloc scan.
+
+## G2b — vtable edges (deferred)
+
+Pointer-table functions were already roots, so reachability does not need work.
+Indirect *call sites* do, and they need the slot witness: a constructor storing
+one vftable address into `[this+0]` in many functions. That is kuna work (fork
+issue 9) and starts only after G5 shows the globals, so a shape exists to check
+against.
+
+## Package rule (2026-11-27)
+
+96 % of the disk's game copy is preallocated zeros; the daemon reported 363 GB
+downloaded while holding 4.65 GB. Only `Have: … verified` is truth. No run that
+reads package bytes starts below 100 % verified plus one clean re-verify, and
+`tools/pkg-status.sh` decides. Claims until then are exe-only.
