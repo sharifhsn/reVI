@@ -85,7 +85,7 @@ Gate: 24/24 either compile with `covered ≈ 100%` and pass their vectors, or ar
 demoted. Rollback: any body not fillable in two hours is demoted without debate
 and returns through the normal queue.
 
-### G2 — graph truth (5 days)
+### G2 — graph truth — STOPPED at the 10% rule, 2026-11-26
 
 Add indirect edges: vtable slots (`vtables.jsonl`), pointer-table dispatch,
 data-held code pointers. Recompute reachability. `callerless` may only be claimed
@@ -156,3 +156,20 @@ called `0x1530dc70`, which is not an address (now `0x530dc70`).
 The bug class that motivated the audit is the padding target: `0x001117e0`
 called `0x4f76200`, pure `int3`, and passed every original-only replay because
 the vector skipped the call.
+
+## G2 result
+
+The premise was partly wrong: `graph` already scans `.rdata`/`.data` for runs of
+code pointers and makes every table target a **root** (7,554 tables, 13,138
+functions), so the renderer is not callerless in practice and the reachable set
+already contains it. What is genuinely missing is the edge *into* a slot (which
+function reads it), and that is a ranking fix, not a reachability fix.
+
+Added anyway: a reloc pass that turns `ADDR32`/`DIR64` slots into `ptr` edges from
+the reading function, with the reader taken from the decode pass's ip-relative
+operands. It moved edges 825,041 → 825,043 and reachable 82,223 → 82,224, well
+under 10%. Per the stop rule the graph is frozen and the work moves to the queue
+ranking, where a `ptr_refs` column matters more than reachability.
+
+Indirect *call sites* (`call [reg+off]`) remain unresolved and are the real
+outstanding item; they need the vtables, not a reloc scan.

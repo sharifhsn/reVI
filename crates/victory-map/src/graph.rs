@@ -73,6 +73,8 @@ pub fn run(file: &Path, out_dir: &Path, min_table: usize) -> Result<()> {
     let mut in_degree: BTreeMap<u32, u32> = BTreeMap::new();
     let mut edges: Vec<(u32, u32, &'static str)> = Vec::new();
     let mut import_edges: BTreeMap<u32, u32> = BTreeMap::new();
+    // Which function reads which data slot; a table slot's reader is its owner.
+    let mut slot_reader: BTreeMap<u32, u32> = BTreeMap::new();
 
     for f in &functions {
         let Some(code) = crate::extent(&data, &info, f.begin_rva, f.len()) else {
@@ -112,9 +114,56 @@ pub fn run(file: &Path, out_dir: &Path, min_table: usize) -> Result<()> {
                     let slot = instruction.ip_rel_memory_address() as u32;
                     if iat.contains_key(&slot) {
                         *import_edges.entry(f.begin_rva).or_default() += 1;
+                    } else {
+                        slot_reader.entry(slot).or_insert(f.begin_rva);
                     }
                 }
                 _ => {}
+            }
+        }
+    }
+
+    // Data-held code pointers: vtable slots and dispatch tables written by a
+    // reloc. The edge points at the target, from whichever function owns the
+    // slot's enclosed data, so a pointer-reached body stops reading callerless.
+    let owner_of = |slot: u32| -> Option<u32> { slot_reader.get(&slot).copied() };
+    if let Some(at) = victory_pe::layout::data_directory_offset(&data, victory_pe::layout::dir::BASERELOC) {
+        let dir_rva = victory_pe::layout::read_u32(&data, at).unwrap_or(0);
+        let dir_size = victory_pe::layout::read_u32(&data, at + 4).unwrap_or(0);
+        if dir_rva != 0 && dir_size != 0 {
+            if let Some(blob) = crate::extent(&data, &info, dir_rva, dir_size) {
+                let mut cur = 0usize;
+                while cur + 8 <= blob.len() {
+                    let page = u32::from_le_bytes(blob[cur..cur + 4].try_into().expect("4"));
+                    let block = u32::from_le_bytes(blob[cur + 4..cur + 8].try_into().expect("4")) as usize;
+                    cur += 8;
+                    let stop = cur + block.saturating_sub(8);
+                    while cur + 2 <= stop && cur + 2 <= blob.len() {
+                        let e = u16::from_le_bytes(blob[cur..cur + 2].try_into().expect("2"));
+                        cur += 2;
+                        let kind = e >> 12;
+                        let off = (e & 0x0FFF) as u32;
+                        if kind == 0 {
+                            continue; // padding
+                        }
+                        let slot = page.wrapping_add(off);
+                        let Some(f) = owner_of(slot) else { continue };
+                        let v = match crate::extent(&data, &info, slot, 8) {
+                            Some(b) => u64::from_le_bytes(b.try_into().expect("8"))
+                                .wrapping_sub(info.image_base),
+                            None => continue,
+                        };
+                        let Ok(v) = u32::try_from(v) else { continue };
+                        if kind != 10 && kind != 3 {
+                            continue;
+                        }
+                        if starts.contains(&v) {
+                            edges.push((f, v, "ptr"));
+                            *out_degree.entry(f).or_default() += 1;
+                            *in_degree.entry(v).or_default() += 1;
+                        }
+                    }
+                }
             }
         }
     }
