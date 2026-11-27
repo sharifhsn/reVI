@@ -44,8 +44,8 @@ def problems(vec: dict, index: int, extents: dict[int, int], image_size: int):
         yield from bad("build", f"{build!r} is not a.b.c.d")
 
     args = vec.get("args")
-    if not isinstance(args, list) or not args:
-        yield from bad("args", "must be a non-empty list")
+    if not isinstance(args, list):
+        yield from bad("args", "must be a list")
         args = []
     if len(args) > 8:
         yield from bad("args", f"{len(args)} entries, max 8")
